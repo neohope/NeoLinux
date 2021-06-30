@@ -378,7 +378,10 @@ static inline void *index_to_obj(struct kmem_cache *cache, struct page *page,
 }
 
 #define BOOT_CPUCACHE_ENTRIES	1
+
+
 /* internal cache of cache description objs */
+//指向静态定义的kmem_cache_boot
 static struct kmem_cache kmem_cache_boot = {
 	.batchcount = 1,
 	.limit = BOOT_CPUCACHE_ENTRIES,
@@ -1166,9 +1169,11 @@ static void __init init_list(struct kmem_cache *cachep, struct kmem_cache_node *
 {
 	struct kmem_cache_node *ptr;
 
+    //分配新的 kmem_cache_node 结构的空间
 	ptr = kmalloc_node(sizeof(struct kmem_cache_node), GFP_NOWAIT, nodeid);
 	BUG_ON(!ptr);
 
+    //复制初始时的静态kmem_cache_node结构
 	memcpy(ptr, list, sizeof(struct kmem_cache_node));
 	/*
 	 * Do not assume that spinlocks can be initialized via memcpy:
@@ -1176,6 +1181,8 @@ static void __init init_list(struct kmem_cache *cachep, struct kmem_cache_node *
 	spin_lock_init(&ptr->list_lock);
 
 	MAKE_ALL_LISTS(cachep, ptr, nodeid);
+
+	//设置kmem_cache_node的地址
 	cachep->node[nodeid] = ptr;
 }
 
@@ -1199,15 +1206,18 @@ static void __init set_up_node(struct kmem_cache *cachep, int index)
  * Initialisation.  Called after the page allocator have been initialised and
  * before smp_init().
  */
+//初始化了第一个kmem_cache
 void __init kmem_cache_init(void)
 {
 	int i;
-
+    
+	//指向静态定义的kmem_cache_boot
 	kmem_cache = &kmem_cache_boot;
 
 	if (!IS_ENABLED(CONFIG_NUMA) || num_possible_nodes() == 1)
 		use_alien_caches = 0;
 
+    //建立保存kmem_cache结构的kmem_cache
 	for (i = 0; i < NUM_INIT_LISTS; i++)
 		kmem_cache_node_init(&init_kmem_cache_node[i]);
 
@@ -1244,10 +1254,12 @@ void __init kmem_cache_init(void)
 	/*
 	 * struct kmem_cache size depends on nr_node_ids & nr_cpu_ids
 	 */
+	//建立保存kmem_cache结构的kmem_cache
 	create_boot_cache(kmem_cache, "kmem_cache",
 		offsetof(struct kmem_cache, node) +
 				  nr_node_ids * sizeof(struct kmem_cache_node *),
 				  SLAB_HWCACHE_ALIGN, 0, 0);
+	//加入全局slab_caches链表中
 	list_add(&kmem_cache->list, &slab_caches);
 	slab_state = PARTIAL;
 
@@ -1277,6 +1289,7 @@ void __init kmem_cache_init(void)
 		}
 	}
 
+    //建立kmalloc函数使用的的kmem_cache
 	create_kmalloc_caches(ARCH_KMALLOC_FLAGS);
 }
 

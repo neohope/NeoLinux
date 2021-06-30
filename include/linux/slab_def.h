@@ -7,8 +7,9 @@
 /*
  * Definitions unique to the original Linux SLAB allocator.
  */
-
+//slab管理头
 struct kmem_cache {
+	//是每个CPU一个array_cache类型的变量，cpu_cache是用于管理空闲对象的
 	struct array_cache __percpu *cpu_cache;
 
 /* 1) Cache tunables. Protected by slab_mutex */
@@ -16,21 +17,27 @@ struct kmem_cache {
 	unsigned int limit;
 	unsigned int shared;
 
+    //cache大小
 	unsigned int size;
 	struct reciprocal_value reciprocal_buffer_size;
 /* 2) touched by every alloc & free from the backend */
 
+    //slab标志
 	slab_flags_t flags;		/* constant flags */
+	//对象个数
 	unsigned int num;		/* # of objs per slab */
 
 /* 3) cache_grow/shrink */
 	/* order of pgs per slab (2^n) */
+	//分配内存页面的order
 	unsigned int gfporder;
 
 	/* force GFP flags, e.g. GFP_DMA */
 	gfp_t allocflags;
 
+    //着色区大小
 	size_t colour;			/* cache colouring range */
+	//着色区的开始偏移
 	unsigned int colour_off;	/* colour offset */
 	struct kmem_cache *freelist_cache;
 	unsigned int freelist_size;
@@ -39,10 +46,15 @@ struct kmem_cache {
 	void (*ctor)(void *obj);
 
 /* 4) cache creation/removal */
+    //本SLAB的名字
 	const char *name;
+	//所有的SLAB都要链接起来
 	struct list_head list;
+	//引用计数
 	int refcount;
+	//对象大小
 	int object_size;
+	//对齐大小
 	int align;
 
 /* 5) statistics */
@@ -83,6 +95,7 @@ struct kmem_cache {
 	unsigned int useroffset;	/* Usercopy region offset */
 	unsigned int usersize;		/* Usercopy region size */
 
+    //指向管理kmemcache的上层结构
 	struct kmem_cache_node *node[MAX_NUMNODES];
 };
 
