@@ -99,6 +99,7 @@ struct free_area {
 	unsigned long		nr_free;
 };
 
+//获取free_area中对应migratetype为下标的free_list中的page
 static inline struct page *get_page_from_free_area(struct free_area *area,
 					    int migratetype)
 {
@@ -315,15 +316,21 @@ enum zone_watermarks {
 #define high_wmark_pages(z) (z->_watermark[WMARK_HIGH] + z->watermark_boost)
 #define wmark_pages(z, i) (z->_watermark[i] + z->watermark_boost)
 
+//描述pcp页面
 struct per_cpu_pages {
+	//列表中的页面数
 	int count;		/* number of pages in the list */
+	//页面数高于水位线，需要清空
 	int high;		/* high watermark, emptying needed */
+	//从伙伴系统增加/删除的块数
 	int batch;		/* chunk size for buddy add/remove */
 
 	/* Lists of pages, one per migrate type stored on the pcp-lists */
+	//页面列表，每个迁移类型一个。
 	struct list_head lists[MIGRATE_PCPTYPES];
 };
 
+//描述pcplist
 struct per_cpu_pageset {
 	struct per_cpu_pages pcp;
 #ifdef CONFIG_NUMA

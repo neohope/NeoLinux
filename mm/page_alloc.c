@@ -858,7 +858,8 @@ static inline void add_to_free_list(struct page *page, struct zone *zone,
 				    unsigned int order, int migratetype)
 {
 	struct free_area *area = &zone->free_area[order];
-
+	
+	//把一组page的首个page加入对应的free_area中
 	list_add(&page->lru, &area->free_list[migratetype]);
 	area->nr_free++;
 }
@@ -882,6 +883,7 @@ static inline void move_to_free_list(struct page *page, struct zone *zone,
 	list_move(&page->lru, &area->free_list[migratetype]);
 }
 
+//脱链page
 static inline void del_page_from_free_list(struct page *page, struct zone *zone,
 					   unsigned int order)
 {
@@ -889,9 +891,13 @@ static inline void del_page_from_free_list(struct page *page, struct zone *zone,
 	if (page_reported(page))
 		__ClearPageReported(page);
 
+    //脱链
 	list_del(&page->lru);
+	//清除page中伙伴系统的标志
 	__ClearPageBuddy(page);
 	set_page_private(page, 0);
+
+	//减少free_area中页面计数
 	zone->free_area[order].nr_free--;
 }
 
@@ -2101,6 +2107,7 @@ void __init init_cma_reserved_pageblock(struct page *page)
  *
  * -- nyc
  */
+//分割伙伴
 static inline void expand(struct zone *zone, struct page *page,
 	int low, int high, int migratetype)
 {
@@ -2117,10 +2124,14 @@ static inline void expand(struct zone *zone, struct page *page,
 		 * Corresponding page table entries will not be touched,
 		 * pages will stay not present in virtual address space
 		 */
+		//标记为保护页，当其伙伴被释放时，允许合并
 		if (set_page_guard(zone, &page[size], high, migratetype))
 			continue;
 
+        //把另一半pages加入对应的free_area中
 		add_to_free_list(&page[size], zone, high, migratetype);
+
+		//设置伙伴
 		set_page_order(&page[size], high);
 	}
 }
@@ -2247,6 +2258,7 @@ static void prep_new_page(struct page *page, unsigned int order, gfp_t gfp_flags
  * Go through the free lists for the given migratetype and remove
  * the smallest available page from the freelists
  */
+//多于1个页面，从 free_area数组中分配页面
 static __always_inline
 struct page *__rmqueue_smallest(struct zone *zone, unsigned int order,
 						int migratetype)
@@ -2257,11 +2269,15 @@ struct page *__rmqueue_smallest(struct zone *zone, unsigned int order,
 
 	/* Find a page of the appropriate size in the preferred list */
 	for (current_order = order; current_order < MAX_ORDER; ++current_order) {
+		//获取current_order对应的free_area
 		area = &(zone->free_area[current_order]);
+		//获取free_area中对应migratetype为下标的free_list中的page
 		page = get_page_from_free_area(area, migratetype);
 		if (!page)
 			continue;
+		//脱链page
 		del_page_from_free_list(page, zone, current_order);
+		//分割伙伴
 		expand(zone, page, order, current_order, migratetype);
 		set_pcppage_migratetype(page, migratetype);
 		return page;
@@ -2820,6 +2836,7 @@ retry:
  * a single hold of the lock, for efficiency.  Add them to the supplied list.
  * Returns the number of new pages which were placed at *list.
  */
+//就从这个内存区中分配一部分页面到pcp中来
 static int rmqueue_bulk(struct zone *zone, unsigned int order,
 			unsigned long count, struct list_head *list,
 			int migratetype, unsigned int alloc_flags)
@@ -3309,6 +3326,7 @@ static inline void zone_statistics(struct zone *preferred_zone, struct zone *z)
 }
 
 /* Remove page from the per-cpu list, caller must protect the list */
+//从pcp移除一个页面，作为分配结果
 static struct page *__rmqueue_pcplist(struct zone *zone, int migratetype,
 			unsigned int alloc_flags,
 			struct per_cpu_pages *pcp,
@@ -3317,6 +3335,7 @@ static struct page *__rmqueue_pcplist(struct zone *zone, int migratetype,
 	struct page *page;
 
 	do {
+		//如果list为空，就从这个内存区中分配一部分页面到pcp中来
 		if (list_empty(list)) {
 			pcp->count += rmqueue_bulk(zone, 0,
 					pcp->batch, list,
@@ -3325,6 +3344,9 @@ static struct page *__rmqueue_pcplist(struct zone *zone, int migratetype,
 				return NULL;
 		}
 
+        //获取list上第一个page结构
+		//脱链
+		//减少pcp页面计数
 		page = list_first_entry(list, struct page, lru);
 		list_del(&page->lru);
 		pcp->count--;
@@ -3334,6 +3356,7 @@ static struct page *__rmqueue_pcplist(struct zone *zone, int migratetype,
 }
 
 /* Lock and remove page from the per-cpu list */
+//申请一个页面，走这里
 static struct page *rmqueue_pcplist(struct zone *preferred_zone,
 			struct zone *zone, gfp_t gfp_flags,
 			int migratetype, unsigned int alloc_flags)
@@ -3343,6 +3366,7 @@ static struct page *rmqueue_pcplist(struct zone *preferred_zone,
 	struct page *page;
 	unsigned long flags;
 
+    ///关中断
 	local_irq_save(flags);
 	//获取当前CPU下的pcp
 	pcp = &this_cpu_ptr(zone->pageset)->pcp;
