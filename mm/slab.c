@@ -2576,6 +2576,7 @@ static void slab_map_pages(struct kmem_cache *cache, struct page *page,
  * Grow (by 1) the number of slabs within a cache.  This is called by
  * kmem_cache_alloc() when there are no active objs left in a cache.
  */
+//将slab的数量加1
 static struct page *cache_grow_begin(struct kmem_cache *cachep,
 				gfp_t flags, int nodeid)
 {
@@ -2604,11 +2605,15 @@ static struct page *cache_grow_begin(struct kmem_cache *cachep,
 	 * Get mem for the objs.  Attempt to allocate a physical page from
 	 * 'nodeid'.
 	 */
+	//获取页面
 	page = kmem_getpages(cachep, local_flags, nodeid);
 	if (!page)
 		goto failed;
 
+    //获取页面所在的内存节点号
 	page_node = page_to_nid(page);
+
+	//根据内存节点获取对应kmem_cache_node结构
 	n = get_node(cachep, page_node);
 
 	/* Get colour for the slab, and cal the next value. */
@@ -2630,13 +2635,16 @@ static struct page *cache_grow_begin(struct kmem_cache *cachep,
 	kasan_poison_slab(page);
 
 	/* Get slab management. */
+	//分配管理空闲对象的数据结构
 	freelist = alloc_slabmgmt(cachep, page, offset,
 			local_flags & ~GFP_CONSTRAINT_MASK, page_node);
 	if (OFF_SLAB(cachep) && !freelist)
 		goto opps1;
 
+    //让页面中相关的字段指向kmem_cache和空闲对象
 	slab_map_pages(cachep, page, freelist);
 
+    //初始化空闲对象管理数据
 	cache_init_objs(cachep, page);
 
 	if (gfpflags_allow_blocking(local_flags))
@@ -2662,12 +2670,18 @@ static void cache_grow_end(struct kmem_cache *cachep, struct page *page)
 	if (!page)
 		return;
 
+    //初始化结page构的slab_list链表
 	INIT_LIST_HEAD(&page->slab_list);
+
+	//根据内存节点获取对应kmem_cache_node结构.
 	n = get_node(cachep, page_to_nid(page));
 
 	spin_lock(&n->list_lock);
+
+	//slab计数增加
 	n->total_slabs++;
 	if (!page->active) {
+		//把这个page结构加入到kmem_cache_node结构的空闲链表中
 		list_add_tail(&page->slab_list, &n->slabs_free);
 		n->free_slabs++;
 	} else
@@ -2842,8 +2856,12 @@ static struct page *get_first_slab(struct kmem_cache_node *n, bool pfmemalloc)
 	struct page *page;
 
 	assert_spin_locked(&n->list_lock);
+
+	//首先从kmem_cache_node结构中的slabs_partial链表上查看有没有page
 	page = list_first_entry_or_null(&n->slabs_partial, struct page,
 					slab_list);
+
+	//从kmem_cache_node结构中的slabs_free链表上查看有没有page
 	if (!page) {
 		n->free_touched = 1;
 		page = list_first_entry_or_null(&n->slabs_free, struct page,
@@ -2910,6 +2928,7 @@ static __always_inline int alloc_block(struct kmem_cache *cachep,
 	return batchcount;
 }
 
+//如果freelist中没有空闲对象
 static void *cache_alloc_refill(struct kmem_cache *cachep, gfp_t flags)
 {
 	int batchcount;
@@ -2920,8 +2939,9 @@ static void *cache_alloc_refill(struct kmem_cache *cachep, gfp_t flags)
 	struct page *page;
 
 	check_irq_off();
-	node = numa_mem_id();
 
+	//获取内存节点
+	node = numa_mem_id();
 	ac = cpu_cache_get(cachep);
 	batchcount = ac->batchcount;
 	if (!ac->touched && batchcount > BATCHREFILL_LIMIT) {
@@ -2932,10 +2952,14 @@ static void *cache_alloc_refill(struct kmem_cache *cachep, gfp_t flags)
 		 */
 		batchcount = BATCHREFILL_LIMIT;
 	}
+
+	//获取cachep所属的kmem_cache_node
 	n = get_node(cachep, node);
 
 	BUG_ON(ac->avail > 0 || !n);
 	shared = READ_ONCE(n->shared);
+
+	//没有空闲对象
 	if (!n->free_objects && (!shared || !shared->avail))
 		goto direct_grow;
 
@@ -2948,6 +2972,7 @@ static void *cache_alloc_refill(struct kmem_cache *cachep, gfp_t flags)
 		goto alloc_done;
 	}
 
+    //获取kmem_cache_node结构中其它kmem_cache,返回的是page，而page会指向kmem_cache
 	while (batchcount > 0) {
 		/* Get slab alloc is to come from. */
 		page = get_first_slab(n, false);
@@ -2956,6 +2981,7 @@ static void *cache_alloc_refill(struct kmem_cache *cachep, gfp_t flags)
 
 		check_spinlock_acquired(cachep);
 
+        //？？？
 		batchcount = alloc_block(cachep, ac, page, batchcount);
 		fixup_slab_list(cachep, n, page, &list);
 	}
@@ -2968,6 +2994,7 @@ alloc_done:
 
 direct_grow:
 	if (unlikely(!ac->avail)) {
+		//分配新的kmem_cache并初始化
 		/* Check if we can use obj in pfmemalloc slab */
 		if (sk_memalloc_socks()) {
 			void *obj = cache_alloc_pfmemalloc(cachep, n, flags);
@@ -2976,6 +3003,8 @@ direct_grow:
 				return obj;
 		}
 
+        //cache_grow_begin 函数，找伙伴系统分配新的内存页面
+		//而且还要找第一个 kmem_cache 分配新的对象，来存放 kmem_cache 结构的实例变量，并进行必要的初始化。
 		page = cache_grow_begin(cachep, gfp_exact_node(flags), node);
 
 		/*
@@ -2985,6 +3014,8 @@ direct_grow:
 		ac = cpu_cache_get(cachep);
 		if (!ac->avail && page)
 			alloc_block(cachep, ac, page, batchcount);
+
+	    //让page挂载到kmem_cache_node结构的slabs_list链表上
 		cache_grow_end(cachep, page);
 
 		if (!ac->avail)
@@ -2992,6 +3023,7 @@ direct_grow:
 	}
 	ac->touched = 1;
 
+    //重新分配
 	return ac->entry[--ac->avail];
 }
 
@@ -3042,6 +3074,7 @@ static void *cache_alloc_debugcheck_after(struct kmem_cache *cachep,
 #define cache_alloc_debugcheck_after(a,b,objp,d) (objp)
 #endif
 
+//分配对象
 static inline void *____cache_alloc(struct kmem_cache *cachep, gfp_t flags)
 {
 	void *objp;
@@ -3049,9 +3082,13 @@ static inline void *____cache_alloc(struct kmem_cache *cachep, gfp_t flags)
 
 	check_irq_off();
 
+    //获取当前cpu在cachep结构中的array_cache结构的指针
 	ac = cpu_cache_get(cachep);
+
+	//如果ac中的avail不为0,说明当前kmem_cache结构中freelist是有空闲对象
 	if (likely(ac->avail)) {
 		ac->touched = 1;
+		//空间对象的地址保存在ac->entry
 		objp = ac->entry[--ac->avail];
 
 		STATS_INC_ALLOCHIT(cachep);
@@ -3059,6 +3096,7 @@ static inline void *____cache_alloc(struct kmem_cache *cachep, gfp_t flags)
 	}
 
 	STATS_INC_ALLOCMISS(cachep);
+	//如果freelist中没有空闲对象
 	objp = cache_alloc_refill(cachep, flags);
 	/*
 	 * the 'ac' may be updated by cache_alloc_refill(),
@@ -3296,6 +3334,7 @@ __do_cache_alloc(struct kmem_cache *cache, gfp_t flags)
 }
 #else
 
+//分配对象
 static __always_inline void *
 __do_cache_alloc(struct kmem_cache *cachep, gfp_t flags)
 {
@@ -3304,6 +3343,7 @@ __do_cache_alloc(struct kmem_cache *cachep, gfp_t flags)
 
 #endif /* CONFIG_NUMA */
 
+//从kmem_cache分配对象
 static __always_inline void *
 slab_alloc(struct kmem_cache *cachep, gfp_t flags, unsigned long caller)
 {
@@ -3318,6 +3358,8 @@ slab_alloc(struct kmem_cache *cachep, gfp_t flags, unsigned long caller)
 
 	cache_alloc_debugcheck_before(cachep, flags);
 	local_irq_save(save_flags);
+
+	//分配对象
 	objp = __do_cache_alloc(cachep, flags);
 	local_irq_restore(save_flags);
 	objp = cache_alloc_debugcheck_after(cachep, flags, objp, caller);
@@ -3656,6 +3698,7 @@ EXPORT_SYMBOL(__kmalloc_node_track_caller);
  *
  * Return: pointer to the allocated memory or %NULL in case of error
  */
+//
 static __always_inline void *__do_kmalloc(size_t size, gfp_t flags,
 					  unsigned long caller)
 {
@@ -3664,9 +3707,13 @@ static __always_inline void *__do_kmalloc(size_t size, gfp_t flags,
 
 	if (unlikely(size > KMALLOC_MAX_CACHE_SIZE))
 		return NULL;
+
+	//查找size对应的kmem_cache
 	cachep = kmalloc_slab(size, flags);
 	if (unlikely(ZERO_OR_NULL_PTR(cachep)))
 		return cachep;
+
+	//分配对象
 	ret = slab_alloc(cachep, flags, caller);
 
 	ret = kasan_kmalloc(cachep, ret, size, flags);

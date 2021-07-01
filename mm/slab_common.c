@@ -568,21 +568,25 @@ void __init create_boot_cache(struct kmem_cache *s, const char *name,
 	s->refcount = -1;	/* Exempt from merging for now */
 }
 
+//创建一个kmem_cache并初始化
 struct kmem_cache *__init create_kmalloc_cache(const char *name,
 		unsigned int size, slab_flags_t flags,
 		unsigned int useroffset, unsigned int usersize)
 {
+	//从第一个kmem_cache中分配一个对象放kmem_cache
 	struct kmem_cache *s = kmem_cache_zalloc(kmem_cache, GFP_NOWAIT);
 
 	if (!s)
 		panic("Out of memory when creating slab %s\n", name);
 
+    //设置s的对齐参数，处理s的freelist就是arr_cache
 	create_boot_cache(s, name, size, flags, useroffset, usersize);
 	list_add(&s->list, &slab_caches);
 	s->refcount = 1;
 	return s;
 }
 
+//各种类型、各种大小的kmem_cache
 struct kmem_cache *
 kmalloc_caches[NR_KMALLOC_TYPES][KMALLOC_SHIFT_HIGH + 1] __ro_after_init =
 { /* initialization for https://bugs.llvm.org/show_bug.cgi?id=42570 */ };
@@ -630,6 +634,7 @@ static inline unsigned int size_index_elem(unsigned int bytes)
  * Find the kmem_cache structure that serves a given size of
  * allocation
  */
+//查找size对应的kmem_cache
 struct kmem_cache *kmalloc_slab(size_t size, gfp_t flags)
 {
 	unsigned int index;
@@ -638,6 +643,7 @@ struct kmem_cache *kmalloc_slab(size_t size, gfp_t flags)
 		if (!size)
 			return ZERO_SIZE_PTR;
 
+        //计算出index
 		index = size_index[size_index_elem(size)];
 	} else {
 		if (WARN_ON_ONCE(size > KMALLOC_MAX_CACHE_SIZE))
@@ -747,6 +753,7 @@ void __init setup_kmalloc_cache_index_table(void)
 	}
 }
 
+//新建一个kmem_cache
 static void __init
 new_kmalloc_cache(int idx, enum kmalloc_cache_type type, slab_flags_t flags)
 {
@@ -764,6 +771,7 @@ new_kmalloc_cache(int idx, enum kmalloc_cache_type type, slab_flags_t flags)
  * may already have been created because they were needed to
  * enable allocations for slab creation.
  */
+//建立所有的kmalloc_caches中的kmem_cache
 void __init create_kmalloc_caches(slab_flags_t flags)
 {
 	int i;
@@ -771,6 +779,7 @@ void __init create_kmalloc_caches(slab_flags_t flags)
 
 	for (type = KMALLOC_NORMAL; type <= KMALLOC_RECLAIM; type++) {
 		for (i = KMALLOC_SHIFT_LOW; i <= KMALLOC_SHIFT_HIGH; i++) {
+			//建立一个新的kmem_cache
 			if (!kmalloc_caches[type][i])
 				new_kmalloc_cache(i, type, flags);
 

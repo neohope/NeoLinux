@@ -304,6 +304,7 @@ static inline void __check_heap_object(const void *ptr, unsigned long n,
  * Whenever changing this, take care of that kmalloc_type() and
  * create_kmalloc_caches() still work as intended.
  */
+//各种类型的kmalloc_cache
 enum kmalloc_cache_type {
 	KMALLOC_NORMAL = 0,
 	KMALLOC_RECLAIM,
@@ -317,6 +318,7 @@ enum kmalloc_cache_type {
 extern struct kmem_cache *
 kmalloc_caches[NR_KMALLOC_TYPES][KMALLOC_SHIFT_HIGH + 1];
 
+//根据gpf获取kmalloc_cache类型
 static __always_inline enum kmalloc_cache_type kmalloc_type(gfp_t flags)
 {
 #ifdef CONFIG_ZONE_DMA
@@ -537,6 +539,7 @@ static __always_inline void *kmalloc_large(size_t size, gfp_t flags)
  *	Try really hard to succeed the allocation but fail
  *	eventually.
  */
+//内核内存分配入口
 static __always_inline void *kmalloc(size_t size, gfp_t flags)
 {
 	if (__builtin_constant_p(size)) {
