@@ -182,10 +182,22 @@ typedef unsigned short freelist_idx_t;
  *
  */
 struct array_cache {
+	/*当前cpu上有多少个可用的对象*/ 
 	unsigned int avail;
+	/*per_cpu里面最大的对象的个数，当超过这个值时，将对象返回给伙伴系统*/ 
 	unsigned int limit;
+	/*一次转入和转出的对象数量*/ 
+	 /*啥叫一次转入和转出的对象数量呢？
+        转入即当array_cache里面没有数据的时间，即avail为0的时候。
+		array_cache需要从cpu共享高速缓存内读取多少个对象内容到cpu_cache补充
+		再如果cpu共享高速缓存里面没有的话就去。
+        
+		转出指本地高速缓存的空间已满，则按batchcount的值将batchcount个对象从本地高速缓存转移出去。
+    */
 	unsigned int batchcount;
+	/*标示本地cpu最近是否被使用*/ 
 	unsigned int touched;
+	//entry指向对象的起始地址  
 	void *entry[];	/*
 			 * Must have this definition in here for the proper
 			 * alignment of array_cache. Also simplifies accessing
@@ -1217,7 +1229,6 @@ void __init kmem_cache_init(void)
 	if (!IS_ENABLED(CONFIG_NUMA) || num_possible_nodes() == 1)
 		use_alien_caches = 0;
 
-    //建立保存kmem_cache结构的kmem_cache
 	for (i = 0; i < NUM_INIT_LISTS; i++)
 		kmem_cache_node_init(&init_kmem_cache_node[i]);
 
@@ -3082,7 +3093,7 @@ static inline void *____cache_alloc(struct kmem_cache *cachep, gfp_t flags)
 
 	check_irq_off();
 
-    //获取当前cpu在cachep结构中的array_cache结构的指针
+    //尝试第一级分配，获取当前cpu在cachep结构中的array_cache结构的指针ac，类似于高速缓存
 	ac = cpu_cache_get(cachep);
 
 	//如果ac中的avail不为0,说明当前kmem_cache结构中freelist是有空闲对象
@@ -3096,7 +3107,7 @@ static inline void *____cache_alloc(struct kmem_cache *cachep, gfp_t flags)
 	}
 
 	STATS_INC_ALLOCMISS(cachep);
-	//如果freelist中没有空闲对象
+	//如果高速缓存ac的freelist中没有空闲对象
 	objp = cache_alloc_refill(cachep, flags);
 	/*
 	 * the 'ac' may be updated by cache_alloc_refill(),
