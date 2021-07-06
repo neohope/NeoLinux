@@ -223,6 +223,7 @@ static int slab_early_init = 1;
 
 #define INDEX_NODE kmalloc_index(sizeof(struct kmem_cache_node))
 
+//初始化kmem_cache_node结构
 static void kmem_cache_node_init(struct kmem_cache_node *parent)
 {
 	INIT_LIST_HEAD(&parent->slabs_full);
@@ -1164,6 +1165,7 @@ out:
 /*
  * swap the static kmem_cache_node with kmalloced memory
  */
+//用kmalloc生成的kmem_cache，替换静态的bootstrap kmem_cache
 static void __init init_list(struct kmem_cache *cachep, struct kmem_cache_node *list,
 				int nodeid)
 {
@@ -1217,7 +1219,7 @@ void __init kmem_cache_init(void)
 	if (!IS_ENABLED(CONFIG_NUMA) || num_possible_nodes() == 1)
 		use_alien_caches = 0;
 
-    //建立保存kmem_cache结构的kmem_cache
+    //初始化kmem_cache_node结构
 	for (i = 0; i < NUM_INIT_LISTS; i++)
 		kmem_cache_node_init(&init_kmem_cache_node[i]);
 
@@ -1267,6 +1269,7 @@ void __init kmem_cache_init(void)
 	 * Initialize the caches that provide memory for the  kmem_cache_node
 	 * structures first.  Without this, further allocations will bug.
 	 */
+	//2) Create the first kmalloc cache
 	kmalloc_caches[KMALLOC_NORMAL][INDEX_NODE] = create_kmalloc_cache(
 				kmalloc_info[INDEX_NODE].name[KMALLOC_NORMAL],
 				kmalloc_info[INDEX_NODE].size,
@@ -1278,9 +1281,9 @@ void __init kmem_cache_init(void)
 	slab_early_init = 0;
 
 	/* 5) Replace the bootstrap kmem_cache_node */
+	//用kmalloc生成的kmem_cache_node，替换静态的bootstrap kmem_cache_node
 	{
 		int nid;
-
 		for_each_online_node(nid) {
 			init_list(kmem_cache, &init_kmem_cache_node[CACHE_CACHE + nid], nid);
 

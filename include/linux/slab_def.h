@@ -95,7 +95,7 @@ struct kmem_cache {
 	unsigned int useroffset;	/* Usercopy region offset */
 	unsigned int usersize;		/* Usercopy region size */
 
-    //指向管理kmemcache的上层结构
+    //指向管理kmemcache的上层结构kmem_cache_node
 	struct kmem_cache_node *node[MAX_NUMNODES];
 };
 
