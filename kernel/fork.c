@@ -164,8 +164,10 @@ void __weak arch_release_task_struct(struct task_struct *tsk)
 #ifndef CONFIG_ARCH_TASK_STRUCT_ALLOCATOR
 static struct kmem_cache *task_struct_cachep;
 
+//分配task_struct结构体
 static inline struct task_struct *alloc_task_struct_node(int node)
 {
+	//在task_struct_cachep内存对象中分配一个task_struct结构休对象
 	return kmem_cache_alloc_node(task_struct_cachep, GFP_KERNEL, node);
 }
 
@@ -210,6 +212,7 @@ static int free_vm_stack_cache(unsigned int cpu)
 }
 #endif
 
+//分配task_struct结构体
 static unsigned long *alloc_thread_stack_node(struct task_struct *tsk, int node)
 {
 #ifdef CONFIG_VMAP_STACK
@@ -257,10 +260,12 @@ static unsigned long *alloc_thread_stack_node(struct task_struct *tsk, int node)
 	}
 	return stack;
 #else
+    //分配两个页面
 	struct page *page = alloc_pages_node(node, THREADINFO_GFP,
 					     THREAD_SIZE_ORDER);
 
 	if (likely(page)) {
+		//让task_struct结构的stack字段指向page的地址
 		tsk->stack = kasan_reset_tag(page_address(page));
 		return tsk->stack;
 	}
@@ -630,6 +635,7 @@ static inline void mm_free_pgd(struct mm_struct *mm)
 	pgd_free(mm, mm->pgd);
 }
 #else
+//复制mm_struct结构数据
 static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 {
 	mmap_write_lock(oldmm);
@@ -846,6 +852,7 @@ void set_task_stack_end_magic(struct task_struct *tsk)
 	*stackend = STACK_END_MAGIC;	/* for overflow detection */
 }
 
+//复制task_struct结构
 static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 {
 	struct task_struct *tsk;
@@ -853,12 +860,14 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 	struct vm_struct *stack_vm_area __maybe_unused;
 	int err;
 
+    //分配task_struct结构体
 	if (node == NUMA_NO_NODE)
 		node = tsk_fork_get_node(orig);
 	tsk = alloc_task_struct_node(node);
 	if (!tsk)
 		return NULL;
 
+    //分配内核栈
 	stack = alloc_thread_stack_node(tsk, node);
 	if (!stack)
 		goto free_tsk;
@@ -1337,12 +1346,14 @@ void exec_mm_release(struct task_struct *tsk, struct mm_struct *mm)
  *
  * Return: the duplicated mm or NULL on failure.
  */
+//复制mm_struct结构
 static struct mm_struct *dup_mm(struct task_struct *tsk,
 				struct mm_struct *oldmm)
 {
 	struct mm_struct *mm;
 	int err;
 
+    //申请内存
 	mm = allocate_mm();
 	if (!mm)
 		goto fail_nomem;
@@ -1374,6 +1385,7 @@ fail_nomem:
 	return NULL;
 }
 
+//复制mm_struct结构
 static int copy_mm(unsigned long clone_flags, struct task_struct *tsk)
 {
 	struct mm_struct *mm, *oldmm;
@@ -1441,6 +1453,7 @@ static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
 	return 0;
 }
 
+//复制files_struct结构
 static int copy_files(unsigned long clone_flags, struct task_struct *tsk)
 {
 	struct files_struct *oldf, *newf;
@@ -1449,6 +1462,7 @@ static int copy_files(unsigned long clone_flags, struct task_struct *tsk)
 	/*
 	 * A background process may not have any files ...
 	 */
+	//获取当前进程的files_struct的指针
 	oldf = current->files;
 	if (!oldf)
 		goto out;
@@ -1458,10 +1472,12 @@ static int copy_files(unsigned long clone_flags, struct task_struct *tsk)
 		goto out;
 	}
 
+    //分配新files_struct结构的实例变量，并复制当前的files_struct结构
 	newf = dup_fd(oldf, NR_OPEN_MAX, &error);
 	if (!newf)
 		goto out;
 
+    //新进程的files_struct结构指针指向新的files_struct结构
 	tsk->files = newf;
 	error = 0;
 out:
@@ -1818,6 +1834,7 @@ static __always_inline void delayed_free_task(struct task_struct *tsk)
  * parts of the process environment (as per the clone
  * flags). The actual kick-off is left to the caller.
  */
+//复制进程，但并不会启动进程
 static __latent_entropy struct task_struct *copy_process(
 					struct pid *pid,
 					int trace,
@@ -2385,6 +2402,7 @@ struct mm_struct *copy_init_mm(void)
  *
  * args->exit_signal is expected to be checked for sanity by the caller.
  */
+//真正的fork函数
 long _do_fork(struct kernel_clone_args *args)
 {
 	u64 clone_flags = args->flags;
@@ -2482,6 +2500,7 @@ pid_t kernel_thread(int (*fn)(void *), void *arg, unsigned long flags)
 }
 
 #ifdef __ARCH_WANT_SYS_FORK
+//系统函数fork
 SYSCALL_DEFINE0(fork)
 {
 #ifdef CONFIG_MMU

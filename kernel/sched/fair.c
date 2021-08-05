@@ -226,6 +226,7 @@ static void __update_inv_weight(struct load_weight *lw)
  * Or, weight =< lw.weight (because lw.weight is the runqueue weight), thus
  * weight/lw.weight <= 1, and therefore our shift will also be positive.
  */
+//计算进程虚拟时间
 static u64 __calc_delta(u64 delta_exec, unsigned long weight, struct load_weight *lw)
 {
 	u64 fact = scale_load_down(weight);
@@ -240,6 +241,7 @@ static u64 __calc_delta(u64 delta_exec, unsigned long weight, struct load_weight
 		}
 	}
 
+    //为了避免使用浮点计算
 	fact = mul_u32_u32(fact, lw->inv_weight);
 
 	while (fact >> 32) {
@@ -668,6 +670,7 @@ int sched_proc_update_handler(struct ctl_table *table, int write,
 /*
  * delta /= w
  */
+//计算进程虚拟时间
 static inline u64 calc_delta_fair(u64 delta, struct sched_entity *se)
 {
 	if (unlikely(se->load.weight != NICE_0_LOAD))
@@ -684,8 +687,10 @@ static inline u64 calc_delta_fair(u64 delta, struct sched_entity *se)
  *
  * p = (nr <= nl) ? l : l*nr/nl
  */
+//计算调度延迟
 static u64 __sched_period(unsigned long nr_running)
 {
+	//当超过 sched_nr_latency 时，我们无法保证调度延迟，因此转为保证最小调度粒度。
 	if (unlikely(nr_running > sched_nr_latency))
 		return nr_running * sysctl_sched_min_granularity;
 	else
@@ -839,28 +844,36 @@ static void update_tg_load_avg(struct cfs_rq *cfs_rq, int force)
 /*
  * Update the current task's runtime statistics.
  */
+//更新当前运行进程和运行队列相关的时间
 static void update_curr(struct cfs_rq *cfs_rq)
 {
 	struct sched_entity *curr = cfs_rq->curr;
+	//获取当前时间
 	u64 now = rq_clock_task(rq_of(cfs_rq));
 	u64 delta_exec;
 
 	if (unlikely(!curr))
 		return;
 
+    //间隔时间
 	delta_exec = now - curr->exec_start;
 	if (unlikely((s64)delta_exec <= 0))
 		return;
 
+    //开始执行时间
 	curr->exec_start = now;
 
 	schedstat_set(curr->statistics.exec_max,
 		      max(delta_exec, curr->statistics.exec_max));
 
+    //累计运行时间
 	curr->sum_exec_runtime += delta_exec;
 	schedstat_add(cfs_rq->exec_clock, delta_exec);
 
+    //计算进程的虚拟时间
 	curr->vruntime += calc_delta_fair(delta_exec, curr);
+
+	//更新运行队列中的最小虚拟时间，这是新建进程的虚拟时间，避免一个新建进程因为虚拟时间太小而长时间占用CPU
 	update_min_vruntime(cfs_rq);
 
 	if (entity_is_task(curr)) {
@@ -4347,6 +4360,7 @@ dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 /*
  * Preempt the current task with a newly woken task if needed:
  */
+//检查是否可以抢占调度
 static void
 check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 {
@@ -4354,8 +4368,11 @@ check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 	struct sched_entity *se;
 	s64 delta;
 
+    //计算当前进程在本次调度中分配的运行时间
 	ideal_runtime = sched_slice(cfs_rq, curr);
+	//当前进程已经运行的实际时间
 	delta_exec = curr->sum_exec_runtime - curr->prev_sum_exec_runtime;
+	//如果实际运行时间已经超过分配给进程的运行时间，就需要抢占当前进程。设置进程的TIF_NEED_RESCHED抢占标志。
 	if (delta_exec > ideal_runtime) {
 		resched_curr(rq_of(cfs_rq));
 		/*
@@ -4371,15 +4388,19 @@ check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 	 * narrow margin doesn't have to wait for a full slice.
 	 * This also mitigates buddy induced latencies under load.
 	 */
+	//因此如果进程运行时间小于最小调度粒度时间，不应该抢占
 	if (delta_exec < sysctl_sched_min_granularity)
 		return;
 
+    //从红黑树中找到虚拟时间最小的调度实体
 	se = __pick_first_entity(cfs_rq);
 	delta = curr->vruntime - se->vruntime;
 
+    //如果当前进程的虚拟时间仍然比红黑树中最左边调度实体虚拟时间小，也不应该发生调度
 	if (delta < 0)
 		return;
 
+    //进行调度
 	if (delta > ideal_runtime)
 		resched_curr(rq_of(cfs_rq));
 }
@@ -4427,9 +4448,11 @@ wakeup_preempt_entity(struct sched_entity *curr, struct sched_entity *se);
  * 3) pick the "last" process, for cache locality
  * 4) do not run the "skip" process, if something else is available
  */
+//选择最适合运行的调度实体
 static struct sched_entity *
 pick_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 {
+	//获取Cfs_rq中的红黑树上最左节点上调度实体，虚拟时间最小
 	struct sched_entity *left = __pick_first_entity(cfs_rq);
 	struct sched_entity *se;
 
@@ -4437,6 +4460,7 @@ pick_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 	 * If curr is set we have to see if its left of the leftmost entity
 	 * still in the tree, provided there was anything in the tree at all.
 	 */
+	//可能当前进程主动放弃CPU，它的虚拟时间比红黑树上的还小，所以left指向当前进程调度实体
 	if (!left || (curr && entity_before(curr, left)))
 		left = curr;
 
@@ -4446,17 +4470,24 @@ pick_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 	 * Avoid running the skip buddy, if running something else can
 	 * be done without getting too unfair.
 	 */
+	//如果选择的调度实体是要跳过的调度实体
 	if (cfs_rq->skip == se) {
 		struct sched_entity *second;
 
 		if (se == curr) {
+			//如果是当前调度实体
+			//选择运行队列中虚拟时间最小的调度实体
 			second = __pick_first_entity(cfs_rq);
 		} else {
+			//否则选择红黑树上第二左的进程节点
 			second = __pick_next_entity(se);
+			//如果次优的调度实体的虚拟时间，还是比当前的调度实体的虚拟时间大
+			//让次优的调度实体也指向当前调度实体
 			if (!second || (curr && entity_before(curr, second)))
 				second = curr;
 		}
 
+        //判断left和second的虚拟时间的差距是否小于sysctl_sched_wakeup_granularity
 		if (second && wakeup_preempt_entity(second, left) < 1)
 			se = second;
 	}
@@ -4473,6 +4504,7 @@ pick_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 	if (cfs_rq->next && wakeup_preempt_entity(cfs_rq->next, left) < 1)
 		se = cfs_rq->next;
 
+    //需要清除掉last、next、skip指针
 	clear_buddies(cfs_rq, se);
 
 	return se;
@@ -4510,6 +4542,7 @@ entity_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr, int queued)
 	/*
 	 * Update run-time statistics of the 'current'.
 	 */
+	//更新当前运行进程和运行队列相关的时间
 	update_curr(cfs_rq);
 
 	/*
@@ -4535,6 +4568,7 @@ entity_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr, int queued)
 		return;
 #endif
 
+    //当运行进程数量大于1就检查是否可抢占
 	if (cfs_rq->nr_running > 1)
 		check_preempt_tick(cfs_rq, curr);
 }
@@ -6970,6 +7004,7 @@ preempt:
 		set_last_buddy(se);
 }
 
+//获取下一个运行进程
 struct task_struct *
 pick_next_task_fair(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 {
@@ -7060,15 +7095,19 @@ again:
 	goto done;
 simple:
 #endif
+    //把上一个进程放回运行队列
 	if (prev)
 		put_prev_task(rq, prev);
 
 	do {
+		//选择最适合运行的调度实体
 		se = pick_next_entity(cfs_rq, NULL);
+		//对选择的调度实体进行一些处理
 		set_next_entity(cfs_rq, se);
 		cfs_rq = group_cfs_rq(se);
-	} while (cfs_rq);
+	} while (cfs_rq);//在没有调度组的情况下，循环一次就结束了
 
+    //通过se获取包含se的进程task_struct
 	p = task_of(se);
 
 done: __maybe_unused;
@@ -10651,9 +10690,11 @@ static void rq_offline_fair(struct rq *rq)
 static void task_tick_fair(struct rq *rq, struct task_struct *curr, int queued)
 {
 	struct cfs_rq *cfs_rq;
+	//获取当前进程的调度实体
 	struct sched_entity *se = &curr->se;
 
 	for_each_sched_entity(se) {
+		//获取当前进程的调度实体对应运行队列
 		cfs_rq = cfs_rq_of(se);
 		entity_tick(cfs_rq, se, queued);
 	}

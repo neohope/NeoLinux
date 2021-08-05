@@ -516,26 +516,36 @@ struct cfs_bandwidth { };
 #endif	/* CONFIG_CGROUP_SCHED */
 
 /* CFS-related fields in a runqueue */
+//公平调度队列
 struct cfs_rq {
+	//cfs_rq上所有调度实体的负载总和
 	struct load_weight	load;
+	//cfs_rq上所有的调度实体不含调度组中的调度实体
 	unsigned int		nr_running;
+	//cfs_rq上所有的调度实体包含调度组中所有调度实体
 	unsigned int		h_nr_running;      /* SCHED_{NORMAL,BATCH,IDLE} */
 	unsigned int		idle_h_nr_running; /* SCHED_IDLE */
 
+    //当前 cfs_rq 上执行的时间
 	u64			exec_clock;
+	//最小虚拟运行时间
 	u64			min_vruntime;
 #ifndef CONFIG_64BIT
 	u64			min_vruntime_copy;
 #endif
 
+    //所有调度实体的根
 	struct rb_root_cached	tasks_timeline;
 
 	/*
 	 * 'curr' points to currently running entity on this cfs_rq.
 	 * It is set to NULL otherwise (i.e when none are currently running).
 	 */
+	//当前调度实体
 	struct sched_entity	*curr;
+	//下一个调度实体
 	struct sched_entity	*next;
+	//上次执行过的调度实体
 	struct sched_entity	*last;
 	struct sched_entity	*skip;
 
@@ -892,14 +902,17 @@ DECLARE_STATIC_KEY_FALSE(sched_uclamp_used);
  * (such as the load balancing or the thread migration code), lock
  * acquire operations must be ordered by ascending &runqueue.
  */
+//进程运行队列结构,PerCPU
 struct rq {
 	/* runqueue lock: */
+	//自旋锁
 	raw_spinlock_t		lock;
 
 	/*
 	 * nr_running and cpu_load should be in the same cacheline because
 	 * remote CPUs use both these fields when doing load calculation.
 	 */
+	//多个就绪运行进程
 	unsigned int		nr_running;
 #ifdef CONFIG_NUMA_BALANCING
 	unsigned int		nr_numa_running;
@@ -928,8 +941,11 @@ struct rq {
 #define UCLAMP_FLAG_IDLE 0x01
 #endif
 
+    //作用于完全公平调度算法的运行队列
 	struct cfs_rq		cfs;
+	//作用于实时调度算法的运行队列
 	struct rt_rq		rt;
+	//作用于EDF调度算法的运行队列
 	struct dl_rq		dl;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -946,13 +962,19 @@ struct rq {
 	 */
 	unsigned long		nr_uninterruptible;
 
+    //这个运行队列当前正在运行的进程
 	struct task_struct __rcu	*curr;
+	//这个运行队列的空转进程
 	struct task_struct	*idle;
+	//这个运行队列的停止进程
 	struct task_struct	*stop;
 	unsigned long		next_balance;
+	//这个运行队列上一次运行进程的mm_struct
 	struct mm_struct	*prev_mm;
 
+    //时钟更新标志
 	unsigned int		clock_update_flags;
+	//运行队列的时间
 	u64			clock;
 	/* Ensure that all clocks are in the same cache line */
 	u64			clock_task ____cacheline_aligned;
@@ -1769,15 +1791,19 @@ extern const u32		sched_prio_to_wmult[40];
 
 #define RETRY_TASK		((void *)-1UL)
 
+//调度器类数据结构
 struct sched_class {
 
 #ifdef CONFIG_UCLAMP_TASK
 	int uclamp_enabled;
 #endif
-
+    //向运行队列中添加一个进程，入队
 	void (*enqueue_task) (struct rq *rq, struct task_struct *p, int flags);
+	//向运行队列中删除一个进程，出队
 	void (*dequeue_task) (struct rq *rq, struct task_struct *p, int flags);
+	//检查当前进程是否可抢占
 	void (*yield_task)   (struct rq *rq);
+	//从运行队列中返回可以投入运行的一个进程
 	bool (*yield_to_task)(struct rq *rq, struct task_struct *p);
 
 	void (*check_preempt_curr)(struct rq *rq, struct task_struct *p, int flags);
@@ -1847,16 +1873,24 @@ extern struct sched_class __end_sched_classes[];
 #define sched_class_highest (__end_sched_classes - 1)
 #define sched_class_lowest  (__begin_sched_classes - 1)
 
+//遍历某个调度类区间
 #define for_class_range(class, _from, _to) \
 	for (class = (_from); class != (_to); class--)
 
+//遍历每个调度类
 #define for_each_class(class) \
 	for_class_range(class, sched_class_highest, sched_class_lowest)
 
+//stop_sched_class > dl_sched_class > rt_sched_class > fair_sched_class > idle_sched_class
+//停止调度类
 extern const struct sched_class stop_sched_class;
+//Deadline调度类
 extern const struct sched_class dl_sched_class;
+//实时调度类
 extern const struct sched_class rt_sched_class;
+//CFS调度类
 extern const struct sched_class fair_sched_class;
+//空转调度类
 extern const struct sched_class idle_sched_class;
 
 static inline bool sched_stop_runnable(struct rq *rq)

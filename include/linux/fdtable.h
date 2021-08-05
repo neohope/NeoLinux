@@ -46,10 +46,12 @@ static inline bool fd_is_open(unsigned int fd, const struct fdtable *fdt)
 /*
  * Open file table structure
  */
+//打开的文件就记录
 struct files_struct {
   /*
    * read mostly part
    */
+    //计数
 	atomic_t count;
 	bool resize_in_progress;
 	wait_queue_head_t resize_wait;
@@ -59,11 +61,15 @@ struct files_struct {
   /*
    * written part on a separate cache line in SMP
    */
+    //自旋锁
 	spinlock_t file_lock ____cacheline_aligned_in_smp;
+	//下一个文件句柄
 	unsigned int next_fd;
+	//执行exec()时要关闭的文件句柄
 	unsigned long close_on_exec_init[1];
 	unsigned long open_fds_init[1];
 	unsigned long full_fds_bits_init[1];
+	//默认情况下打开文件的指针数组
 	struct file __rcu * fd_array[NR_OPEN_DEFAULT];
 };
 
