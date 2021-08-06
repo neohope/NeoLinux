@@ -62,17 +62,25 @@ enum kobject_action {
 };
 
 struct kobject {
+	//名称，反映在sysfs中
 	const char		*name;
+	//挂入kset结构的链表
 	struct list_head	entry;
+	//指向父结构
 	struct kobject		*parent;
+	//指向所属的kset
 	struct kset		*kset;
 	struct kobj_type	*ktype;
+	//指向sysfs文件系统目录项
 	struct kernfs_node	*sd; /* sysfs directory entry */
+	//引用计数器结构
 	struct kref		kref;
 #ifdef CONFIG_DEBUG_KOBJECT_RELEASE
 	struct delayed_work	release;
 #endif
+    //初始化状态
 	unsigned int state_initialized:1;
+	//是否在sysfs中
 	unsigned int state_in_sysfs:1;
 	unsigned int state_add_uevent_sent:1;
 	unsigned int state_remove_uevent_sent:1;
@@ -190,8 +198,10 @@ struct sock;
  * desired.
  */
 struct kset {
+	//挂载kobject结构的链表
 	struct list_head list;
 	spinlock_t list_lock;
+	//自身包含一个kobject结构
 	struct kobject kobj;
 	const struct kset_uevent_ops *uevent_ops;
 } __randomize_layout;

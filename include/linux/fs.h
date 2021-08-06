@@ -918,6 +918,7 @@ static inline int ra_has_index(struct file_ra_state *ra, pgoff_t index)
 		index <  ra->start + ra->size);
 }
 
+//文件结构
 struct file {
 	union {
 		struct llist_node	fu_llist;

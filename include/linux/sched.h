@@ -447,26 +447,39 @@ struct sched_statistics {
 #endif
 };
 
+//进程调度实体
 struct sched_entity {
 	/* For load-balancing: */
+	//表示当前调度实体的权重
 	struct load_weight		load;
+	//红黑树的数据节点
 	struct rb_node			run_node;
+	//链表节点，被链接到 percpu 的 rq->cfs_tasks
 	struct list_head		group_node;
+	//当前调度实体是否在就绪队列上
 	unsigned int			on_rq;
 
+    //当前实体上次被调度执行的时间
 	u64				exec_start;
+	//当前实体总执行时间
 	u64				sum_exec_runtime;
+	//当前实体的虚拟时间
 	u64				vruntime;
+	//截止到上次统计，进程执行的时间
 	u64				prev_sum_exec_runtime;
-
+    //实体执行迁移的次数
 	u64				nr_migrations;
 
+    //统计信息包含进程的睡眠统计、等待延迟统计、CPU迁移统计、唤醒统计等
 	struct sched_statistics		statistics;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
+    // 表示当前实体处于调度组中的深度
 	int				depth;
+	//指向父级调度实体
 	struct sched_entity		*parent;
 	/* rq on which this entity is (to be) queued: */
+	//当前调度实体属于的 cfs_rq.
 	struct cfs_rq			*cfs_rq;
 	/* rq "owned" by this entity/group: */
 	struct cfs_rq			*my_q;
@@ -481,6 +494,7 @@ struct sched_entity {
 	 * Put into separate cache line so it does not
 	 * collide with read-mostly values above.
 	 */
+	// 记录当前实体对于CPU的负载
 	struct sched_avg		avg;
 #endif
 };
@@ -628,15 +642,18 @@ struct wake_q_node {
 	struct wake_q_node *next;
 };
 
+//进程描述结构
 struct task_struct {
 #ifdef CONFIG_THREAD_INFO_IN_TASK
 	/*
 	 * For reasons of header soup (see current_thread_info()), this
 	 * must be the first element of task_struct.
 	 */
+	//处理器特有数据
 	struct thread_info		thread_info;
 #endif
 	/* -1 unrunnable, 0 runnable, >0 stopped: */
+	//进程状态
 	volatile long			state;
 
 	/*
@@ -645,7 +662,9 @@ struct task_struct {
 	 */
 	randomized_struct_fields_start
 
+    //进程内核栈地址
 	void				*stack;
+	//进程使用计数
 	refcount_t			usage;
 	/* Per task flags (PF_*), defined further below: */
 	unsigned int			flags;
@@ -672,19 +691,28 @@ struct task_struct {
 	int				recent_used_cpu;
 	int				wake_cpu;
 #endif
+    //进程是否在运行队列上
 	int				on_rq;
 
+    //动态优先级
 	int				prio;
+	//静态优先级
 	int				static_prio;
+	//取决于静态优先级和调度策略
 	int				normal_prio;
+	//实时优先级
 	unsigned int			rt_priority;
 
+    //指向其所在的调度类
 	const struct sched_class	*sched_class;
+	//普通进程的调度实体
 	struct sched_entity		se;
+	//实时进程的调度实体
 	struct sched_rt_entity		rt;
 #ifdef CONFIG_CGROUP_SCHED
 	struct task_group		*sched_task_group;
 #endif
+    //采用EDF算法调度实时进程的调度实体
 	struct sched_dl_entity		dl;
 
 #ifdef CONFIG_UCLAMP_TASK
@@ -736,15 +764,15 @@ struct task_struct {
 	bool				trc_reader_checked;
 	struct list_head		trc_holdout_list;
 #endif /* #ifdef CONFIG_TASKS_TRACE_RCU */
-
+    //用于调度器统计进程的运行信息
 	struct sched_info		sched_info;
-
+    //所有进程的链表
 	struct list_head		tasks;
 #ifdef CONFIG_SMP
 	struct plist_node		pushable_tasks;
 	struct rb_node			pushable_dl_tasks;
 #endif
-
+    //指向进程内存结构
 	struct mm_struct		*mm;
 	struct mm_struct		*active_mm;
 
@@ -808,7 +836,7 @@ struct task_struct {
 	unsigned long			atomic_flags; /* Flags requiring atomic access. */
 
 	struct restart_block		restart_block;
-
+    //进程id
 	pid_t				pid;
 	pid_t				tgid;
 
@@ -826,13 +854,17 @@ struct task_struct {
 	struct task_struct __rcu	*real_parent;
 
 	/* Recipient of SIGCHLD, wait4() reports: */
+	//指向其父进程
 	struct task_struct __rcu	*parent;
 
 	/*
 	 * Children/sibling form the list of natural children:
 	 */
+	//链表中的所有元素都是它的子进程
 	struct list_head		children;
+	//用于把当前进程插入到兄弟链表中
 	struct list_head		sibling;
+	//指向其所在进程组的领头进程
 	struct task_struct		*group_leader;
 
 	/*
@@ -858,12 +890,15 @@ struct task_struct {
 	/* CLONE_CHILD_CLEARTID: */
 	int __user			*clear_child_tid;
 
+    //用于记录进程在用户态下所经过的节拍数
 	u64				utime;
+	//用于记录进程在内核态下所经过的节拍数
 	u64				stime;
 #ifdef CONFIG_ARCH_HAS_SCALED_CPUTIME
 	u64				utimescaled;
 	u64				stimescaled;
 #endif
+    //用于记录作为虚拟机进程所经过的节拍数
 	u64				gtime;
 	struct prev_cputime		prev_cputime;
 #ifdef CONFIG_VIRT_CPU_ACCOUNTING_GEN
@@ -884,6 +919,7 @@ struct task_struct {
 	u64				start_boottime;
 
 	/* MM fault and swap info: this can arguably be seen as either mm-specific or thread-specific: */
+	//缺页统计
 	unsigned long			min_flt;
 	unsigned long			maj_flt;
 
@@ -930,9 +966,11 @@ struct task_struct {
 	unsigned long			last_switch_time;
 #endif
 	/* Filesystem information: */
+	//进程相关的文件系统信息
 	struct fs_struct		*fs;
 
 	/* Open file information: */
+	//进程打开的所有文件
 	struct files_struct		*files;
 
 	/* Namespaces: */
@@ -1288,6 +1326,7 @@ struct task_struct {
 	struct task_struct		*oom_reaper_list;
 #endif
 #ifdef CONFIG_VMAP_STACK
+    //内核栈的内存区
 	struct vm_struct		*stack_vm_area;
 #endif
 #ifdef CONFIG_THREAD_INFO_IN_TASK

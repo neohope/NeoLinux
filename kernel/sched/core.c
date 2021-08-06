@@ -605,6 +605,7 @@ void wake_up_q(struct wake_q_head *head)
  * might also involve a cross-CPU call to trigger the scheduler on
  * the target CPU.
  */
+//将当前进程标记为可以被抢占
 void resched_curr(struct rq *rq)
 {
 	struct task_struct *curr = rq->curr;
@@ -3980,10 +3981,13 @@ unsigned long long task_sched_runtime(struct task_struct *p)
  * This function gets called by the timer code, with HZ frequency.
  * We call it with interrupts disabled.
  */
+//每 1/1000、1/250、1/100 秒（根据配置不同选取其一），产生一个时钟中断
 void scheduler_tick(void)
 {
 	int cpu = smp_processor_id();
+	//获取运行CPU运行进程队列
 	struct rq *rq = cpu_rq(cpu);
+	//获取当进程
 	struct task_struct *curr = rq->curr;
 	struct rq_flags rf;
 	unsigned long thermal_pressure;
@@ -3993,9 +3997,11 @@ void scheduler_tick(void)
 
 	rq_lock(rq, &rf);
 
+    //更新运行队列的时间等数据
 	update_rq_clock(rq);
 	thermal_pressure = arch_scale_thermal_pressure(cpu_of(rq));
 	update_thermal_load_avg(rq_clock_thermal(rq), rq, thermal_pressure);
+	//更新当前时间的虚拟时间
 	curr->sched_class->task_tick(rq, curr, 0);
 	calc_global_load_tick(rq);
 	psi_task_tick(rq);
@@ -4326,6 +4332,7 @@ static void put_prev_task_balance(struct rq *rq, struct task_struct *prev,
 /*
  * Pick up the highest-prio task:
  */
+//挑选下一个运行的进程
 static inline struct task_struct *
 pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 {
@@ -4338,16 +4345,21 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 	 * higher scheduling class, because otherwise those loose the
 	 * opportunity to pull in more work from other CPUs.
 	 */
+	//这是对CFS的一种优化处理，因为大部分进程属于CFS管理
 	if (likely(prev->sched_class <= &fair_sched_class &&
 		   rq->nr_running == rq->cfs.h_nr_running)) {
 
+        //调用CFS的对应的函数
 		p = pick_next_task_fair(rq, prev, rf);
 		if (unlikely(p == RETRY_TASK))
 			goto restart;
 
 		/* Assumes fair_sched_class->next == idle_sched_class */
+		//如果没有获取到运行进程
 		if (!p) {
+			//将上一个进程放回运行队列中
 			put_prev_task(rq, prev);
+			//获取空转进程
 			p = pick_next_task_idle(rq);
 		}
 
@@ -4358,7 +4370,9 @@ restart:
 	put_prev_task_balance(rq, prev, rf);
 
 	for_each_class(class) {
+		//依次从最高优先级的调度类开始遍历
 		p = class->pick_next_task(rq);
+		//如果在一个调度类所管理的运行队列中挑选到一个进程，立即返回
 		if (p)
 			return p;
 	}
@@ -4406,6 +4420,7 @@ restart:
  *
  * WARNING: must be called with preemption disabled!
  */
+//
 static void __sched notrace __schedule(bool preempt)
 {
 	struct task_struct *prev, *next;
@@ -4416,7 +4431,9 @@ static void __sched notrace __schedule(bool preempt)
 	int cpu;
 
 	cpu = smp_processor_id();
+	//获取当前CPU的运行队列
 	rq = cpu_rq(cpu);
+	//获取当前进程
 	prev = rq->curr;
 
 	schedule_debug(prev, preempt);
@@ -4442,11 +4459,13 @@ static void __sched notrace __schedule(bool preempt)
 	 * Also, the membarrier system call requires a full memory barrier
 	 * after coming from user-space, before storing to rq->curr.
 	 */
+	//运行队列加锁
 	rq_lock(rq, &rf);
 	smp_mb__after_spinlock();
 
 	/* Promote REQ to ACT */
 	rq->clock_update_flags <<= 1;
+	//更新运行队列时钟
 	update_rq_clock(rq);
 
 	switch_count = &prev->nivcsw;
@@ -4492,11 +4511,15 @@ static void __sched notrace __schedule(bool preempt)
 		switch_count = &prev->nvcsw;
 	}
 
+    //获取下一个投入运行的进程
 	next = pick_next_task(rq, prev, &rf);
+	//清除抢占标志
 	clear_tsk_need_resched(prev);
 	clear_preempt_need_resched();
 
+    //当前运行进程和下一个运行进程不同，就要进程切换
 	if (likely(prev != next)) {
+		//切换计数统计
 		rq->nr_switches++;
 		/*
 		 * RCU users of rcu_dereference(rq->curr) may not see
@@ -4524,9 +4547,11 @@ static void __sched notrace __schedule(bool preempt)
 		trace_sched_switch(preempt, prev, next);
 
 		/* Also unlocks the rq: */
+		//进程机器上下文切换
 		rq = context_switch(rq, prev, next, &rf);
 	} else {
 		rq->clock_update_flags &= ~(RQCF_ACT_SKIP|RQCF_REQ_SKIP);
+		//解锁运行队列
 		rq_unlock_irq(rq, &rf);
 	}
 
@@ -4592,16 +4617,21 @@ static void sched_update_worker(struct task_struct *tsk)
 	}
 }
 
+//进程调度入口函数
 asmlinkage __visible void __sched schedule(void)
 {
+	//获取当前进程
 	struct task_struct *tsk = current;
 
 	sched_submit_work(tsk);
 	do {
+		//关闭内核抢占
 		preempt_disable();
+		//进程调用
 		__schedule(false);
+		//开启内核抢占
 		sched_preempt_enable_no_resched();
-	} while (need_resched());
+	} while (need_resched());//是否需要再次重新调用
 	sched_update_worker(tsk);
 }
 EXPORT_SYMBOL(schedule);
@@ -8449,6 +8479,7 @@ void dump_cpu_task(int cpu)
  * If a task goes up by ~10% and another task goes down by ~10% then
  * the relative distance between them is ~25%.)
  */
+//进程nice值与权重进行换算
 const int sched_prio_to_weight[40] = {
  /* -20 */     88761,     71755,     56483,     46273,     36291,
  /* -15 */     29154,     23254,     18705,     14949,     11916,

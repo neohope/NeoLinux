@@ -122,8 +122,11 @@ static inline void rb_link_node_rcu(struct rb_node *node, struct rb_node *parent
  * Furthermore, users that want to cache both pointers may
  * find it a bit asymmetric, but that's ok.
  */
+//所有调度实体的根
 struct rb_root_cached {
+	//红黑树的根
 	struct rb_root rb_root;
+	//红黑树最左子节点
 	struct rb_node *rb_leftmost;
 };
 

@@ -323,6 +323,7 @@ struct vm_userfaultfd_ctx {};
  * space that has a special rule for the page-fault handlers (ie a shared
  * library, the executable area etc).
  */
+//描述一段虚拟地址空间的
 struct vm_area_struct {
 	/* The first cache line has the info for VMA tree walking. */
 
@@ -406,9 +407,13 @@ struct core_state {
 };
 
 struct kioctx_table;
+
+//描述一个进程的地址空间
 struct mm_struct {
 	struct {
+		//虚拟地址区间链表VMAs
 		struct vm_area_struct *mmap;		/* list of VMAs */
+		//组织vm_area_struct结构的红黑树的根
 		struct rb_root mm_rb;
 		u64 vmacache_seqnum;                   /* per-thread vmacache */
 #ifdef CONFIG_MMU
@@ -423,8 +428,10 @@ struct mm_struct {
 		unsigned long mmap_compat_base;
 		unsigned long mmap_compat_legacy_base;
 #endif
+        //进程虚拟地址空间大小
 		unsigned long task_size;	/* size of task vm space */
 		unsigned long highest_vm_end;	/* highest vma end address */
+		//指向MMU页表
 		pgd_t * pgd;
 
 #ifdef CONFIG_MEMBARRIER
@@ -446,6 +453,7 @@ struct mm_struct {
 		 * @mm_count (which may then free the &struct mm_struct if
 		 * @mm_count also drops to 0).
 		 */
+		//多个进程共享这个mm_struct
 		atomic_t mm_users;
 
 		/**
@@ -455,6 +463,7 @@ struct mm_struct {
 		 * Use mmgrab()/mmdrop() to modify. When this drops to 0, the
 		 * &struct mm_struct is freed.
 		 */
+		//mm_struct结构本身计数
 		atomic_t mm_count;
 
 		/**
@@ -468,15 +477,19 @@ struct mm_struct {
 		atomic_t has_pinned;
 
 #ifdef CONFIG_MMU
+        //页表占用了多个页
 		atomic_long_t pgtables_bytes;	/* PTE page table pages */
 #endif
+        //多少个VMA
 		int map_count;			/* number of VMAs */
 
+        //保护页表的自旋锁
 		spinlock_t page_table_lock; /* Protects page tables and some
 					     * counters
 					     */
 		struct rw_semaphore mmap_lock;
 
+        //挂入mm_struct结构的链表
 		struct list_head mmlist; /* List of maybe swapped mm's.	These
 					  * are globally strung together off
 					  * init_mm.mmlist, and are protected
@@ -496,8 +509,11 @@ struct mm_struct {
 		unsigned long def_flags;
 
 		spinlock_t arg_lock; /* protect the below fields */
+		//进程应用程序代码开始、结束地址，应用程序数据的开始、结束地址
 		unsigned long start_code, end_code, start_data, end_data;
+		//进程应用程序堆区的开始、当前地址、栈开始地址
 		unsigned long start_brk, brk, start_stack;
+		//进程应用程序参数区开始、结束地址
 		unsigned long arg_start, arg_end, env_start, env_end;
 
 		unsigned long saved_auxv[AT_VECTOR_SIZE]; /* for /proc/PID/auxv */
