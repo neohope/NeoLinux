@@ -22,6 +22,7 @@
 #include "power/power.h"
 
 /* /sys/devices/system */
+//devices/system下所有设备
 static struct kset *system_kset;
 
 #define to_bus_attr(_attr) container_of(_attr, struct bus_attribute, attr)
@@ -176,6 +177,7 @@ static const struct kset_uevent_ops bus_uevent_ops = {
 	.filter = bus_uevent_filter,
 };
 
+//管理所有总线
 static struct kset *bus_kset;
 
 /* Manually detach a device from its associated driver. */
@@ -799,6 +801,7 @@ static struct bus_attribute bus_attr_uevent = __ATTR(uevent, S_IWUSR, NULL,
  * infrastructure, then register the children subsystems it has:
  * the devices and drivers that belong to the subsystem.
  */
+//注册总线
 int bus_register(struct bus_type *bus)
 {
 	int retval;
