@@ -2232,6 +2232,7 @@ static ssize_t dev_show(struct device *dev, struct device_attribute *attr,
 static DEVICE_ATTR_RO(dev);
 
 /* /sys/devices/ */
+//管理所有设备
 struct kset *devices_kset;
 
 /**
