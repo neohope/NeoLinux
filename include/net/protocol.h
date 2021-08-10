@@ -78,16 +78,22 @@ struct net_offload {
 #define INET6_PROTO_GSO_EXTHDR	0x1
 
 /* This is used to register socket interfaces for IP protocols.  */
+//管理和描述 struct proto_ops 和 struct proto 之间的对应关系
 struct inet_protosw {
 	struct list_head list;
 
-        /* These two fields form the lookup key.  */
+    /* These two fields form the lookup key.  */
+	/* AF_INET协议族套接字的类型,如TCP为SOCK_STREAM*/
 	unsigned short	 type;	   /* This is the 2nd argument to socket(2). */
+	/* 协议族中某个协议实例的编号。如TCP协议的编码为IPPROTO_TCP */
 	unsigned short	 protocol; /* This is the L4 protocol number.  */
 
+    //跟内核协议相关的套接字操作函数块
 	struct proto	 *prot;
+	//系统调用套接字的操作函数
 	const struct proto_ops *ops;
   
+    /* 该套接字属性的相关标志 */
 	unsigned char	 flags;      /* See INET_PROTOSW_* below.  */
 };
 #define INET_PROTOSW_REUSE 0x01	     /* Are ports automatically reusable? */
