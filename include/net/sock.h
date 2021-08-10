@@ -171,7 +171,7 @@ struct sock_common {
 		};
 	};
 	union  {
-		unsigned int	skc_hash;
+		unsigned int	skc_hash;               //引用的哈希值
 		__u16		skc_u16hashes[2];
 	};
 	/* skc_dport && skc_num must be grouped as well */
@@ -183,15 +183,15 @@ struct sock_common {
 		};
 	};
 
-	unsigned short		skc_family;
-	volatile unsigned char	skc_state;
-	unsigned char		skc_reuse:4;
+	unsigned short		skc_family;             /*地址族*/
+	volatile unsigned char	skc_state;          /*连接状态*/
+	unsigned char		skc_reuse:4;            /*SO_REUSEADDR设置*/
 	unsigned char		skc_reuseport:1;
 	unsigned char		skc_ipv6only:1;
 	unsigned char		skc_net_refcnt:1;
 	int			skc_bound_dev_if;
 	union {
-		struct hlist_node	skc_bind_node;
+		struct hlist_node	skc_bind_node;      /*哈希表相关*/
 		struct hlist_node	skc_portaddr_node;
 	};
 	struct proto		*skc_prot;
@@ -222,7 +222,7 @@ struct sock_common {
 	int			skc_dontcopy_begin[0];
 	/* public: */
 	union {
-		struct hlist_node	skc_node;
+		struct hlist_node	skc_node;          //哈希节点
 		struct hlist_nulls_node skc_nulls_node;
 	};
 	unsigned short		skc_tx_queue_mapping;
@@ -235,7 +235,7 @@ struct sock_common {
 		u32		skc_tw_rcv_nxt; /* struct tcp_timewait_sock  */
 	};
 
-	refcount_t		skc_refcnt;
+	refcount_t		skc_refcnt;                 /*引用计数*/
 	/* private: */
 	int                     skc_dontcopy_end[0];
 	union {
@@ -389,7 +389,7 @@ struct sock {
 	int			sk_rcvlowat;
 	struct sk_buff_head	sk_error_queue;
 	struct sk_buff		*sk_rx_skb_cache;
-	struct sk_buff_head	sk_receive_queue;
+	struct sk_buff_head	sk_receive_queue;         //接收数据队列
 	/*
 	 * The backlog queue is special, it is always used with
 	 * the per-socket spinlock held and requires low latency
@@ -438,7 +438,7 @@ struct sock {
 		struct rb_root	tcp_rtx_queue;
 	};
 	struct sk_buff		*sk_tx_skb_cache;
-	struct sk_buff_head	sk_write_queue;
+	struct sk_buff_head	sk_write_queue;             //发送数据队列
 	__s32			sk_peek_off;
 	int			sk_write_pending;
 	__u32			sk_dst_pending_confirm;

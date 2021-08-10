@@ -111,17 +111,14 @@ struct socket_wq {
  *  @sk: internal networking protocol agnostic socket representation
  *  @wq: wait queue for several uses
  */
+//套接字
 struct socket {
-	socket_state		state;
-
-	short			type;
-
+	socket_state		state;   // 套接字的状态
+	short			type;        // 套接字的设置标志。存放套接字等待缓冲区的状态信息，其值的形式如SOCK_ASYNC_NOSPACE等
 	unsigned long		flags;
-
-	struct file		*file;
-	struct sock		*sk;
-	const struct proto_ops	*ops;
-
+	struct file		*file;       // 套接字所属的文件描述符
+	struct sock		*sk;         // 指向存放套接字属性的结构指针
+	const struct proto_ops	*ops;// 套接字层的操作函数块
 	struct socket_wq	wq;
 };
 

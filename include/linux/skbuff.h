@@ -709,7 +709,7 @@ typedef unsigned char *sk_buff_data_t;
  *	@users: User count - see {datagram,tcp}.c
  *	@extensions: allocated extensions, valid if active_extensions is nonzero
  */
-
+//套接字缓存
 struct sk_buff {
 	union {
 		struct {
