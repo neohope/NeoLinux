@@ -440,6 +440,7 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	struct sock *sk = sock->sk;
 	int err;
 
+    /* 如果传输层接口上实现了bind调用，则回调它。目前只有SOCK_RAW类型的传输层实现了该接口raw_bind */
 	/* If the socket has its own bind function then use it. (RAW) */
 	if (sk->sk_prot->bind) {
 		return sk->sk_prot->bind(sk, uaddr, addr_len);
@@ -490,8 +491,8 @@ int __inet_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 	 *  is temporarily down)
 	 */
 	err = -EADDRNOTAVAIL;
-	if (!inet_can_nonlocal_bind(net, inet) &&
-	    addr->sin_addr.s_addr != htonl(INADDR_ANY) &&
+	if (!inet_can_nonlocal_bind(net, inet) &&            /* 必须绑定到本地接口的地址 */
+	    addr->sin_addr.s_addr != htonl(INADDR_ANY) &&    /* 绑定地址不合法 */
 	    chk_addr_ret != RTN_LOCAL &&
 	    chk_addr_ret != RTN_MULTICAST &&
 	    chk_addr_ret != RTN_BROADCAST)
@@ -510,18 +511,24 @@ int __inet_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 	 *      would be illegal to use them (multicast/broadcast) in
 	 *      which case the sending device address is used.
 	 */
+	/* 对套接口进行加锁，因为后面要对其状态进行判断 */
 	if (flags & BIND_WITH_LOCK)
 		lock_sock(sk);
 
 	/* Check these errors (active socket, double bind). */
 	err = -EINVAL;
+	// 如果状态不为CLOSE，表示套接口已经处于活动状态，不能再绑定
+	// 或者已经指定了本地端口号，也不能再绑定
 	if (sk->sk_state != TCP_CLOSE || inet->inet_num)
 		goto out_release_sock;
 
+    /* 设置地址到传输控制块中 */
 	inet->inet_rcv_saddr = inet->inet_saddr = addr->sin_addr.s_addr;
+	/* 如果是广播或者多播地址，则源地址使用设备地址。 */
 	if (chk_addr_ret == RTN_MULTICAST || chk_addr_ret == RTN_BROADCAST)
 		inet->inet_saddr = 0;  /* Use device */
 
+    /* 调用传输层的get_port来进行地址绑定。如tcp_v4_get_port或udp_v4_get_port */
 	/* Make sure we are allowed to bind here. */
 	if (snum || !(inet->bind_address_no_port ||
 		      (flags & BIND_FORCE_ADDRESS_NO_PORT))) {
@@ -539,13 +546,18 @@ int __inet_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 		}
 	}
 
+    /* 设置标志，表示已经绑定了本地地址和端口 */
 	if (inet->inet_rcv_saddr)
 		sk->sk_userlocks |= SOCK_BINDADDR_LOCK;
 	if (snum)
 		sk->sk_userlocks |= SOCK_BINDPORT_LOCK;
 	inet->inet_sport = htons(inet->inet_num);
+
+	/* 还没有连接到对方，清除远端地址和端口 */
 	inet->inet_daddr = 0;
 	inet->inet_dport = 0;
+
+	/* 清除路由缓存 */
 	sk_dst_reset(sk);
 	err = 0;
 out_release_sock:

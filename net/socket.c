@@ -570,13 +570,16 @@ struct socket *sock_alloc(void)
 	struct inode *inode;
 	struct socket *sock;
 
+    // 初始化一个可用的inode节点， 在fs/inode.c中
 	inode = new_inode_pseudo(sock_mnt->mnt_sb);
 	if (!inode)
 		return NULL;
 
+    // 实际创建的是socket_alloc复合对象，因此要使用SOCKET_I宏从inode中取出关联的socket对象用于返回
 	sock = SOCKET_I(inode);
 
 	inode->i_ino = get_next_ino();
+	// 文件类型为套接字
 	inode->i_mode = S_IFSOCK | S_IRWXUGO;
 	inode->i_uid = current_fsuid();
 	inode->i_gid = current_fsgid();
@@ -1360,8 +1363,10 @@ int __sock_create(struct net *net, int family, int type, int protocol,
 	struct socket *sock;
 	const struct net_proto_family *pf;
 
+    // 首先检验是否支持协议族
 	/*
 	 *      Check protocol is in range
+	 *      检查是否在内核支持的socket范围内
 	 */
 	if (family < 0 || family >= NPROTO)
 		return -EAFNOSUPPORT;
@@ -1387,6 +1392,7 @@ int __sock_create(struct net *net, int family, int type, int protocol,
 	 *	Allocate the socket and allow the family to set things up. if
 	 *	the protocol is 0, the family is instructed to select an appropriate
 	 *	default.
+	 *  为新的套接字分配内存空间，分配成功后返回新的指针
 	 */
 	sock = sock_alloc();
 	if (!sock) {
@@ -1645,6 +1651,7 @@ int __sys_bind(int fd, struct sockaddr __user *umyaddr, int addrlen)
 	struct sockaddr_storage address;
 	int err, fput_needed;
 
+    //获取socket实例
 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
 	if (sock) {
 		err = move_addr_to_kernel(umyaddr, addrlen, &address);
@@ -1652,6 +1659,10 @@ int __sys_bind(int fd, struct sockaddr __user *umyaddr, int addrlen)
 			err = security_socket_bind(sock,
 						   (struct sockaddr *)&address,
 						   addrlen);
+
+			//如果是TCP套接字，sock->ops指向的是inet_stream_ops
+			//sock->ops是在inet_create()函数中初始化，所以bind接口
+			//调用的是inet_bind()函数。
 			if (!err)
 				err = sock->ops->bind(sock,
 						      (struct sockaddr *)
@@ -1672,13 +1683,14 @@ SYSCALL_DEFINE3(bind, int, fd, struct sockaddr __user *, umyaddr, int, addrlen)
  *	necessary for a listen, and if that works, we mark the socket as
  *	ready for listening.
  */
-
+//调用 listen 函数时，应用程序触发内核的 sys_listen 函数
 int __sys_listen(int fd, int backlog)
 {
 	struct socket *sock;
 	int err, fput_needed;
 	int somaxconn;
 
+    // 通过套接字描述符找到struct socket
 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
 	if (sock) {
 		somaxconn = sock_net(sock->sk)->core.sysctl_somaxconn;
@@ -1686,6 +1698,8 @@ int __sys_listen(int fd, int backlog)
 			backlog = somaxconn;
 
 		err = security_socket_listen(sock, backlog);
+
+		// 根据套接字类型调用监听函数
 		if (!err)
 			err = sock->ops->listen(sock, backlog);
 
@@ -1720,6 +1734,8 @@ int __sys_accept4_file(struct file *file, unsigned file_flags,
 		goto out;
 
 	err = -ENFILE;
+
+	// 创建一个新套接字
 	newsock = sock_alloc();
 	if (!newsock)
 		goto out;
@@ -1750,6 +1766,7 @@ int __sys_accept4_file(struct file *file, unsigned file_flags,
 	if (err)
 		goto out_fd;
 
+    // 根据套接字类型调用不同的函数inet_accept
 	err = sock->ops->accept(sock, newsock, sock->file->f_flags | file_flags,
 					false);
 	if (err < 0)
@@ -1762,6 +1779,8 @@ int __sys_accept4_file(struct file *file, unsigned file_flags,
 			err = -ECONNABORTED;
 			goto out_fd;
 		}
+
+		// 从内核复制到用户空间
 		err = move_addr_to_user(&address,
 					len, upeer_sockaddr, upeer_addrlen);
 		if (err < 0)
@@ -1810,12 +1829,14 @@ int __sys_accept4(int fd, struct sockaddr __user *upeer_sockaddr,
 	return ret;
 }
 
+//收到连接
 SYSCALL_DEFINE4(accept4, int, fd, struct sockaddr __user *, upeer_sockaddr,
 		int __user *, upeer_addrlen, int, flags)
 {
 	return __sys_accept4(fd, upeer_sockaddr, upeer_addrlen, flags);
 }
 
+//收到连接
 SYSCALL_DEFINE3(accept, int, fd, struct sockaddr __user *, upeer_sockaddr,
 		int __user *, upeer_addrlen)
 {
@@ -1865,6 +1886,8 @@ int __sys_connect(int fd, struct sockaddr __user *uservaddr, int addrlen)
 		struct sockaddr_storage address;
 
 		ret = move_addr_to_kernel(uservaddr, addrlen, &address);
+
+		// 调用__sys_connect_file
 		if (!ret)
 			ret = __sys_connect_file(f.file, &address, addrlen, 0);
 		fdput(f);
@@ -1873,6 +1896,7 @@ int __sys_connect(int fd, struct sockaddr __user *uservaddr, int addrlen)
 	return ret;
 }
 
+//当应用程序调用 connect 函数发出连接请求时，内核会启动函数 sys_connect
 SYSCALL_DEFINE3(connect, int, fd, struct sockaddr __user *, uservaddr,
 		int, addrlen)
 {
@@ -2032,6 +2056,8 @@ int __sys_recvfrom(int fd, void __user *ubuf, size_t size, unsigned int flags,
 	err = import_single_range(READ, ubuf, size, &iov, &msg.msg_iter);
 	if (unlikely(err))
 		return err;
+	
+	// 通过套接字描述符找到struct socket
 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
 	if (!sock)
 		goto out;
@@ -2046,9 +2072,12 @@ int __sys_recvfrom(int fd, void __user *ubuf, size_t size, unsigned int flags,
 	msg.msg_flags = 0;
 	if (sock->file->f_flags & O_NONBLOCK)
 		flags |= MSG_DONTWAIT;
+
+	// sock_recvmsg为具体的接收函数
 	err = sock_recvmsg(sock, &msg, flags);
 
 	if (err >= 0 && addr != NULL) {
+		// 从内核复制到用户空间
 		err2 = move_addr_to_user(&address,
 					 msg.msg_namelen, addr, addr_len);
 		if (err2 < 0)
@@ -2197,9 +2226,11 @@ int __sys_shutdown(int fd, int how)
 	int err, fput_needed;
 	struct socket *sock;
 
+    /* 通过套接字，描述符找到对应的结构*/
 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
 	if (sock != NULL) {
 		err = security_socket_shutdown(sock, how);
+		/* 根据套接字协议族调用关闭函数*/
 		if (!err)
 			err = sock->ops->shutdown(sock, how);
 		fput_light(sock->file, fput_needed);
