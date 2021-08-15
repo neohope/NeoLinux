@@ -3480,6 +3480,8 @@ bool tcp_oow_rate_limited(struct net *net, const struct sk_buff *skb,
 	return __tcp_oow_rate_limited(net, mib_idx, last_oow_ack_time);
 }
 
+// PROC文件tcp_challenge_ack_limit控制每秒钟发送挑战ACK报文的数量。
+// 避免遭受Blind In-Window Attacks，包括reset，sync或者数据注入攻击等，详解RFC5961。
 /* RFC 5961 7 [ACK Throttling] */
 static void tcp_send_challenge_ack(struct sock *sk, const struct sk_buff *skb)
 {

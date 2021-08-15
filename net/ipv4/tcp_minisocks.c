@@ -337,6 +337,8 @@ void tcp_time_wait(struct sock *sk, int state, int timeo)
 	}
 
 	tcp_update_metrics(sk);
+
+	//释放旧的SK
 	tcp_done(sk);
 }
 EXPORT_SYMBOL(tcp_time_wait);
