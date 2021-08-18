@@ -8707,6 +8707,7 @@ static inline bool kvm_vcpu_running(struct kvm_vcpu *vcpu)
 		!vcpu->arch.apf.halted);
 }
 
+//运行虚拟机
 static int vcpu_run(struct kvm_vcpu *vcpu)
 {
 	int r;
@@ -8717,6 +8718,7 @@ static int vcpu_run(struct kvm_vcpu *vcpu)
 
 	for (;;) {
 		if (kvm_vcpu_running(vcpu)) {
+			/*vcpu进入guest模式*/
 			r = vcpu_enter_guest(vcpu);
 		} else {
 			r = vcpu_block(kvm, vcpu);
@@ -8726,9 +8728,12 @@ static int vcpu_run(struct kvm_vcpu *vcpu)
 			break;
 
 		kvm_clear_request(KVM_REQ_PENDING_TIMER, vcpu);
+
+		/*检查是否有阻塞的时钟timer*/
 		if (kvm_cpu_has_pending_timer(vcpu))
 			kvm_inject_pending_timer_irqs(vcpu);
 
+        /*检查是否有用户空间的中断注入*/
 		if (dm_request_for_irq_injection(vcpu) &&
 			kvm_vcpu_ready_for_interrupt_injection(vcpu)) {
 			r = 0;
@@ -8895,6 +8900,8 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu)
 		kvm_apic_accept_events(vcpu);
 		kvm_clear_request(KVM_REQ_UNHALT, vcpu);
 		r = -EAGAIN;
+
+		/*是否有阻塞的signal*/
 		if (signal_pending(current)) {
 			r = -EINTR;
 			kvm_run->exit_reason = KVM_EXIT_INTR;
@@ -9470,6 +9477,9 @@ int kvm_arch_vcpu_precreate(struct kvm *kvm, unsigned int id)
 	return 0;
 }
 
+//进行 vcpu_vmx 结构的申请操作
+//然后还对 vcpu_vmx 进行了初始化
+//在这个函数的执行过程中，同时还会设置 CPU 模式寄存器（MSR 寄存器）
 int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu)
 {
 	struct page *page;

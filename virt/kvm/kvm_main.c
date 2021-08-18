@@ -736,6 +736,7 @@ void __weak kvm_arch_pre_destroy_vm(struct kvm *kvm)
 {
 }
 
+//创建 KVM 中内存、I/O 等资源相关的数据结构并进行初始化。
 static struct kvm *kvm_create_vm(unsigned long type)
 {
 	struct kvm *kvm = kvm_arch_alloc_vm();
@@ -747,6 +748,7 @@ static struct kvm *kvm_create_vm(unsigned long type)
 
 	spin_lock_init(&kvm->mmu_lock);
 	mmgrab(current->mm);
+	/*设置kvm的mm结构为当前进程的mm,然后引用计数为1*/
 	kvm->mm = current->mm;
 	kvm_eventfd_init(kvm);
 	mutex_init(&kvm->lock);
@@ -802,6 +804,7 @@ static struct kvm *kvm_create_vm(unsigned long type)
 		goto out_err;
 
 	mutex_lock(&kvm_lock);
+	/*把kvm链表加入总链表*/
 	list_add(&kvm->vm_list, &vm_list);
 	mutex_unlock(&kvm_lock);
 
@@ -887,6 +890,7 @@ static void kvm_destroy_vm(struct kvm *kvm)
 	mmdrop(mm);
 }
 
+/*生成kvm-vcpu控制文件*/
 void kvm_get_kvm(struct kvm *kvm)
 {
 	refcount_inc(&kvm->users_count);
@@ -3101,6 +3105,7 @@ static int kvm_vm_ioctl_create_vcpu(struct kvm *kvm, u32 id)
 	kvm->created_vcpus++;
 	mutex_unlock(&kvm->lock);
 
+    /*调用相关cpu的vcpu_create 通过arch/x86/x86.c 进入vmx.c*/
 	r = kvm_arch_vcpu_precreate(kvm, id);
 	if (r)
 		goto vcpu_decrement;
@@ -3121,6 +3126,7 @@ static int kvm_vm_ioctl_create_vcpu(struct kvm *kvm, u32 id)
 
 	kvm_vcpu_init(vcpu, kvm, id);
 
+    /*调用相关cpu的vcpu_setup*/
 	r = kvm_arch_vcpu_create(vcpu);
 	if (r)
 		goto vcpu_free_run_page;
@@ -3134,6 +3140,7 @@ static int kvm_vm_ioctl_create_vcpu(struct kvm *kvm, u32 id)
 	vcpu->vcpu_idx = atomic_read(&kvm->online_vcpus);
 	BUG_ON(kvm->vcpus[vcpu->vcpu_idx]);
 
+    /*生成kvm-vcpu控制文件*/
 	/* Now it's all set up, let userspace reach it */
 	kvm_get_kvm(kvm);
 	r = create_vcpu_fd(vcpu);
@@ -3682,6 +3689,7 @@ static long kvm_vm_ioctl(struct file *filp,
 		return -EIO;
 	switch (ioctl) {
 	case KVM_CREATE_VCPU:
+	    //创建虚拟CPU
 		r = kvm_vm_ioctl_create_vcpu(kvm, arg);
 		break;
 	case KVM_ENABLE_CAP: {
@@ -3905,6 +3913,7 @@ static struct file_operations kvm_vm_fops = {
 	KVM_COMPAT(kvm_vm_compat_ioctl),
 };
 
+//虚拟机初始化
 static int kvm_dev_ioctl_create_vm(unsigned long type)
 {
 	int r;

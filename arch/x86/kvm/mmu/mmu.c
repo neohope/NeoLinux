@@ -5136,6 +5136,7 @@ static void init_kvm_nested_mmu(struct kvm_vcpu *vcpu)
 	update_last_nonleaf_level(vcpu, g_context);
 }
 
+//设置虚拟内存初始化
 void kvm_init_mmu(struct kvm_vcpu *vcpu, bool reset_roots)
 {
 	if (reset_roots) {
@@ -5147,12 +5148,13 @@ void kvm_init_mmu(struct kvm_vcpu *vcpu, bool reset_roots)
 			vcpu->arch.mmu->prev_roots[i] = KVM_MMU_ROOT_INFO_INVALID;
 	}
 
+    /*嵌套虚拟化，我们暂不考虑了 */
 	if (mmu_is_nested(vcpu))
 		init_kvm_nested_mmu(vcpu);
 	else if (tdp_enabled)
-		init_kvm_tdp_mmu(vcpu);
+		init_kvm_tdp_mmu(vcpu);             //EPT 的方式
 	else
-		init_kvm_softmmu(vcpu);
+		init_kvm_softmmu(vcpu);             //影子页表实现的 soft mmu
 }
 EXPORT_SYMBOL_GPL(kvm_init_mmu);
 
