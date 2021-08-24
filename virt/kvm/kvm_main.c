@@ -3044,6 +3044,7 @@ static int kvm_vcpu_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+//kvm_vcpu_ioctl文件操作符
 static struct file_operations kvm_vcpu_fops = {
 	.release        = kvm_vcpu_release,
 	.unlocked_ioctl = kvm_vcpu_ioctl,
@@ -3181,6 +3182,7 @@ static int kvm_vcpu_ioctl_set_sigmask(struct kvm_vcpu *vcpu, sigset_t *sigset)
 	return 0;
 }
 
+//kvm_vcpu_ioctl文件操作，可以启动一个虚拟机
 static long kvm_vcpu_ioctl(struct file *filp,
 			   unsigned int ioctl, unsigned long arg)
 {
@@ -3671,6 +3673,7 @@ static int kvm_vm_ioctl_enable_cap_generic(struct kvm *kvm,
 	}
 }
 
+//kvm_vm_ioctl文件操作，可以创建虚拟CPU
 static long kvm_vm_ioctl(struct file *filp,
 			   unsigned int ioctl, unsigned long arg)
 {
@@ -3898,6 +3901,7 @@ static long kvm_vm_compat_ioctl(struct file *filp,
 }
 #endif
 
+//kvm_vm_ioctl文件操作符
 static struct file_operations kvm_vm_fops = {
 	.release        = kvm_vm_release,
 	.unlocked_ioctl = kvm_vm_ioctl,
@@ -3951,6 +3955,7 @@ put_kvm:
 	return r;
 }
 
+//kvm_dev_ioctl可以创建虚拟机
 static long kvm_dev_ioctl(struct file *filp,
 			  unsigned int ioctl, unsigned long arg)
 {
@@ -3991,6 +3996,7 @@ out:
 	return r;
 }
 
+//kvm_dev_ioctl操作符
 static struct file_operations kvm_chardev_ops = {
 	.unlocked_ioctl = kvm_dev_ioctl,
 	.llseek		= noop_llseek,

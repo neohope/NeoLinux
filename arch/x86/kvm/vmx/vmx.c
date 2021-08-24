@@ -4883,6 +4883,7 @@ static int handle_triple_fault(struct kvm_vcpu *vcpu)
 	return 0;
 }
 
+//IO虚拟化
 static int handle_io(struct kvm_vcpu *vcpu)
 {
 	unsigned long exit_qualification;
