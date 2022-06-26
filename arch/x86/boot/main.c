@@ -15,6 +15,7 @@
 #include "boot.h"
 #include "string.h"
 
+//定义boot_params变量
 struct boot_params boot_params __attribute__((aligned(16)));
 
 char *HEAP = _end;
@@ -131,19 +132,26 @@ static void init_heap(void)
 	}
 }
 
+// 从header.S跳转过来，从汇编跳转到了C语言书写的启动部分，这里是16位的C
 void main(void)
 {
+	//把先前setup_header结构复制到boot_params结构中的hdr变量中。
+	//在linux/arch/x86/include/uapi/asm/bootparam.h文件中，
+	//你会发现boot_params结构中的hdr的类型正是setup_header结构。
 	/* First, copy the boot header into the "zeropage" */
 	copy_boot_params();
 
+    //初始化早期引导所用的console
 	/* Initialize the early-boot console */
 	console_init();
 	if (cmdline_find_option_bool("debug"))
 		puts("early console in setup code\n");
 
+    //初始化堆
 	/* End of heap check */
 	init_heap();
 
+    //检查CPU是否支持运行Linux
 	/* Make sure we have all the proper CPU support */
 	if (validate_cpu()) {
 		puts("Unable to boot - please use a kernel appropriate "
@@ -151,31 +159,39 @@ void main(void)
 		die();
 	}
 
+    //告诉BIOS我们打算在什么CPU模式下运行它
 	/* Tell the BIOS what CPU mode we intend to run in. */
 	set_bios_mode();
 
+    //查看物理内存空间布局
 	/* Detect memory layout */
 	detect_memory();
 
+    //初始化键盘
 	/* Set keyboard repeat rate (why?) and query the lock flags */
 	keyboard_init();
 
+    //查询Intel的(IST)信息
 	/* Query Intel SpeedStep (IST) information */
 	query_ist();
 
+    //查询APM BIOS电源管理信息
 	/* Query APM information */
 #if defined(CONFIG_APM) || defined(CONFIG_APM_MODULE)
 	query_apm_bios();
 #endif
 
+    //查询EDD BIOS扩展数据区域的信息
 	/* Query EDD information */
 #if defined(CONFIG_EDD) || defined(CONFIG_EDD_MODULE)
 	query_edd();
 #endif
 
+    //设置显卡的图形模式
 	/* Set the video mode */
 	set_video();
 
+    //进入CPU保护模式，不再返回
 	/* Do the last things and invoke protected mode */
 	go_to_protected_mode();
 }

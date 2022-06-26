@@ -667,6 +667,9 @@ noinline void __ref rest_init(void)
 	int pid;
 
 	rcu_scheduler_starting();
+
+    //建立kernel_init线程
+	//1号进程
 	/*
 	 * We need to spawn init first so that it obtains pid 1, however
 	 * the init task will end up wanting to create kthreads, which, if
@@ -684,6 +687,7 @@ noinline void __ref rest_init(void)
 	rcu_read_unlock();
 
 	numa_default_policy();
+	//建立khreadd线程，2号进程
 	pid = kernel_thread(kthreadd, NULL, CLONE_FS | CLONE_FILES);
 	rcu_read_lock();
 	kthreadd_task = find_task_by_pid_ns(pid, &init_pid_ns);
@@ -833,6 +837,7 @@ void __init __weak arch_call_rest_init(void)
 	rest_init();
 }
 
+//0号进程
 asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 {
 	char *command_line;
@@ -842,8 +847,10 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 	smp_setup_processor_id();
 	debug_objects_early_init();
 
+    //CPU组早期初始化
 	cgroup_init_early();
 
+    //关中断
 	local_irq_disable();
 	early_boot_irqs_disabled = true;
 
@@ -855,6 +862,7 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 	page_address_init();
 	pr_notice("%s", linux_banner);
 	early_security_init();
+	//ARCH层初始化
 	setup_arch(&command_line);
 	setup_boot_config(command_line);
 	setup_command_line(command_line);
@@ -885,10 +893,13 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 	 * These use large bootmem allocations and must precede
 	 * kmem_cache_init()
 	 */
+	//日志初始化
 	setup_log_buf(0);
 	vfs_caches_init_early();
 	sort_main_extable();
+	//陷阱门初始化
 	trap_init();
+	//内存初始化
 	mm_init();
 
 	ftrace_init();
@@ -896,6 +907,7 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 	/* trace_printk can be enabled here */
 	early_trace_init();
 
+    //调度器初始化
 	/*
 	 * Set up the scheduler prior starting any interrupts (such as the
 	 * timer interrupt). Full topology setup happens at smp_init()
@@ -923,8 +935,10 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 	 * early.  Work item execution depends on kthreads and starts after
 	 * workqueue_init().
 	 */
+	//工作队列初始化
 	workqueue_init_early();
 
+    //RCU锁初始化
 	rcu_init();
 
 	/* Trace events are available after this */
@@ -934,13 +948,16 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 		initcall_debug_enable();
 
 	context_tracking_init();
+	//IRQ 中断请求初始化
 	/* init some links before init_ISA_irqs() */
 	early_irq_init();
 	init_IRQ();
 	tick_init();
 	rcu_init_nohz();
+	//定时器初始化
 	init_timers();
 	hrtimers_init();
+	//软中断初始化
 	softirq_init();
 	timekeeping_init();
 
@@ -1004,6 +1021,7 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 		initrd_start = 0;
 	}
 #endif
+    //每个cpu页面集初始化
 	setup_per_cpu_pageset();
 	numa_policy_init();
 	acpi_early_init();
@@ -1019,15 +1037,21 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 #endif
 	thread_stack_cache_init();
 	cred_init();
+	//fork初始化建立进程的
 	fork_init();
 	proc_caches_init();
 	uts_ns_init();
+	//内核缓冲区初始化
 	buffer_init();
 	key_init();
+	//安全相关的初始化
 	security_init();
 	dbg_late_init();
+	//VFS数据结构内存池初始化
 	vfs_caches_init();
+	//页缓存初始化
 	pagecache_init();
+	//进程信号初始化
 	signals_init();
 	seq_file_init();
 	proc_root_init();
@@ -1045,6 +1069,7 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 	sfi_init_late();
 	kcsan_init();
 
+    //运行第一个进程
 	/* Do the rest non-__init'ed, we're now alive */
 	arch_call_rest_init();
 
@@ -1396,6 +1421,7 @@ void __weak free_initmem(void)
 	free_initmem_default(POISON_FREE_INITMEM);
 }
 
+// 1号进程
 static int __ref kernel_init(void *unused)
 {
 	int ret;
@@ -1421,6 +1447,7 @@ static int __ref kernel_init(void *unused)
 
 	do_sysctl_args();
 
+    // 如果内核启动参数配置了ramdisk_execute_command
 	if (ramdisk_execute_command) {
 		ret = run_init_process(ramdisk_execute_command);
 		if (!ret)
@@ -1429,6 +1456,7 @@ static int __ref kernel_init(void *unused)
 		       ramdisk_execute_command, ret);
 	}
 
+    // 如果内核启动参数配置了run_init_process
 	/*
 	 * We try each of these until one succeeds.
 	 *
@@ -1443,6 +1471,7 @@ static int __ref kernel_init(void *unused)
 		      execute_command, ret);
 	}
 
+    // 如果内核启动参数配置了CONFIG_DEFAULT_INIT
 	if (CONFIG_DEFAULT_INIT[0] != '\0') {
 		ret = run_init_process(CONFIG_DEFAULT_INIT);
 		if (ret)
@@ -1452,12 +1481,14 @@ static int __ref kernel_init(void *unused)
 			return 0;
 	}
 
+    //继续尝试执行以下各种命令
 	if (!try_to_run_init_process("/sbin/init") ||
 	    !try_to_run_init_process("/etc/init") ||
 	    !try_to_run_init_process("/bin/init") ||
 	    !try_to_run_init_process("/bin/sh"))
 		return 0;
 
+    //所有尝试失败，init失败
 	panic("No working init found.  Try passing init= option to kernel. "
 	      "See Linux Documentation/admin-guide/init.rst for guidance.");
 }

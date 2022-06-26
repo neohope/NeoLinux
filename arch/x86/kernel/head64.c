@@ -422,6 +422,7 @@ static void __init copy_bootdata(char *real_mode_data)
 	sme_unmap_bootdata(real_mode_data);
 }
 
+// linux的第一个C函数
 asmlinkage __visible void __init x86_64_start_kernel(char * real_mode_data)
 {
 	/*
@@ -440,11 +441,14 @@ asmlinkage __visible void __init x86_64_start_kernel(char * real_mode_data)
 
 	cr4_init_shadow();
 
+    //重新设置早期页表
 	/* Kill off the identity-map trampoline */
 	reset_early_page_tables();
 
+    //清理BSS段
 	clear_bss();
 
+    //清理之前的顶层页目录
 	clear_page(init_top_pgt);
 
 	/*
@@ -458,13 +462,16 @@ asmlinkage __visible void __init x86_64_start_kernel(char * real_mode_data)
 
 	idt_setup_early_handler();
 
+    //复制引导信息
 	copy_bootdata(__va(real_mode_data));
 
+    //加载BSP CPU的微码
 	/*
 	 * Load microcode early on BSP.
 	 */
 	load_ucode_bsp();
 
+    //让顶层页目录指向重新设置早期页表
 	/* set init_top_pgt kernel high mapping*/
 	init_top_pgt[511] = early_top_pgt[511];
 
@@ -487,5 +494,7 @@ void __init x86_64_start_reservations(char *real_mode_data)
 		break;
 	}
 
+    //init/main.c
+    //0号进程，64位
 	start_kernel();
 }

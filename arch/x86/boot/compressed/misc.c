@@ -321,6 +321,8 @@ static void parse_elf(void *output)
 	free(phdrs);
 }
 
+
+//从head_64.S跳转过来执行内核解压
 /*
  * The compressed kernel image (ZO), has been moved so that its position
  * is against the end of the buffer used to hold the uncompressed kernel
@@ -437,9 +439,12 @@ asmlinkage __visible void *extract_kernel(void *rmode, memptr heap,
 #endif
 
 	debug_putstr("\nDecompressing Linux... ");
+	//调用具体的解压缩算法解压
 	__decompress(input_data, input_len, NULL, NULL, output, output_len,
 			NULL, error);
+	//解压出的vmlinux是elf格式，所以要解析出里面的指令数据段和常规数据段
 	parse_elf(output);
+	//返回vmlinux的入口点即Linux内核程序的开始地址
 	handle_relocations(output, output_len, virt_addr);
 	debug_putstr("done.\nBooting the kernel.\n");
 	return output;

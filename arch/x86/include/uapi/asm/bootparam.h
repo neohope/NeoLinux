@@ -63,25 +63,25 @@ struct setup_indirect {
 };
 
 struct setup_header {
-	__u8	setup_sects;
-	__u16	root_flags;
-	__u32	syssize;
-	__u16	ram_size;
+	__u8	setup_sects;              //setup大小
+	__u16	root_flags;               //根标志
+	__u32	syssize;                  //系统文件大小
+	__u16	ram_size;                 //内存大小
 	__u16	vid_mode;
-	__u16	root_dev;
-	__u16	boot_flag;
+	__u16	root_dev;                 //根设备号
+	__u16	boot_flag;                //引导标志
 	__u16	jump;
 	__u32	header;
 	__u16	version;
-	__u32	realmode_swtch;
+	__u32	realmode_swtch;           //切换回实模式的函数地址
 	__u16	start_sys_seg;
-	__u16	kernel_version;
-	__u8	type_of_loader;
-	__u8	loadflags;
-	__u16	setup_move_size;
-	__u32	code32_start;
-	__u32	ramdisk_image;
-	__u32	ramdisk_size;
+	__u16	kernel_version;           //内核版本
+	__u8	type_of_loader;           //引导器类型 我们这里是GRUB
+	__u8	loadflags;                //加载内核的标志
+	__u16	setup_move_size;          //移动setup的大小
+	__u32	code32_start;             //将要跳转到32位模式下的地址
+	__u32	ramdisk_image;            //初始化内存盘映像地址，里面有内核驱动模块
+	__u32	ramdisk_size;             //初始化内存盘映像大小
 	__u32	bootsect_kludge;
 	__u16	heap_end_ptr;
 	__u8	ext_loader_ver;

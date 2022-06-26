@@ -602,6 +602,7 @@ int kthread_stop(struct task_struct *k)
 }
 EXPORT_SYMBOL(kthread_stop);
 
+// 2号进程
 int kthreadd(void *unused)
 {
 	struct task_struct *tsk = current;

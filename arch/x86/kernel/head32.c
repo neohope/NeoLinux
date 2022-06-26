@@ -53,6 +53,7 @@ asmlinkage __visible void __init i386_start_kernel(void)
 		break;
 	}
 
+    //0号进程，32位
 	start_kernel();
 }
 
