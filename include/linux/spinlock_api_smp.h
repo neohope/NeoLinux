@@ -83,6 +83,7 @@ _raw_spin_unlock_irqrestore(raw_spinlock_t *lock, unsigned long flags)
 #define _raw_spin_unlock_irqrestore(lock, flags) __raw_spin_unlock_irqrestore(lock, flags)
 #endif
 
+//自旋锁尝试加锁
 static inline int __raw_spin_trylock(raw_spinlock_t *lock)
 {
 	preempt_disable();
@@ -136,6 +137,7 @@ static inline void __raw_spin_lock_bh(raw_spinlock_t *lock)
 	LOCK_CONTENDED(lock, do_raw_spin_trylock, do_raw_spin_lock);
 }
 
+//自旋锁加锁
 static inline void __raw_spin_lock(raw_spinlock_t *lock)
 {
 	preempt_disable();
@@ -145,6 +147,7 @@ static inline void __raw_spin_lock(raw_spinlock_t *lock)
 
 #endif /* !CONFIG_GENERIC_LOCKBREAK || CONFIG_DEBUG_LOCK_ALLOC */
 
+//自旋锁解锁
 static inline void __raw_spin_unlock(raw_spinlock_t *lock)
 {
 	spin_release(&lock->dep_map, _RET_IP_);

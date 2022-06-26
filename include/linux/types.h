@@ -163,12 +163,14 @@ typedef phys_addr_t resource_size_t;
  */
 typedef unsigned long irq_hw_number_t;
 
+//原子变量32位
 typedef struct {
 	int counter;
 } atomic_t;
 
 #define ATOMIC_INIT(i) { (i) }
 
+//原子变量64位
 #ifdef CONFIG_64BIT
 typedef struct {
 	s64 counter;

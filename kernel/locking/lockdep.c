@@ -4292,6 +4292,7 @@ static int __lock_is_held(const struct lockdep_map *lock, int read);
  * otherwise we could get an interrupt which would want to take locks,
  * which would end up in lockdep again.
  */
+//加锁
 static int __lock_acquire(struct lockdep_map *lock, unsigned int subclass,
 			  int trylock, int read, int check, int hardirqs_off,
 			  struct lockdep_map *nest_lock, unsigned long ip,
@@ -4994,6 +4995,7 @@ static bool lockdep_nmi(void)
  * We are not always called with irqs disabled - do that here,
  * and also avoid lockdep recursion:
  */
+//加锁
 void lock_acquire(struct lockdep_map *lock, unsigned int subclass,
 			  int trylock, int read, int check,
 			  struct lockdep_map *nest_lock, unsigned long ip)
@@ -5033,6 +5035,7 @@ void lock_acquire(struct lockdep_map *lock, unsigned int subclass,
 }
 EXPORT_SYMBOL_GPL(lock_acquire);
 
+//释放锁
 void lock_release(struct lockdep_map *lock, unsigned long ip)
 {
 	unsigned long flags;

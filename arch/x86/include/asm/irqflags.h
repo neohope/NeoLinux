@@ -15,6 +15,7 @@
  * Interrupt control:
  */
 
+//实际保存eflags寄存器
 /* Declaration required for gcc < 4.9 to prevent -Werror=missing-prototypes */
 extern inline unsigned long native_save_fl(void);
 extern __always_inline unsigned long native_save_fl(void)
@@ -35,6 +36,7 @@ extern __always_inline unsigned long native_save_fl(void)
 	return flags;
 }
 
+//实际恢复eflags寄存器
 extern inline void native_restore_fl(unsigned long flags);
 extern inline void native_restore_fl(unsigned long flags)
 {
@@ -44,11 +46,13 @@ extern inline void native_restore_fl(unsigned long flags)
 		     :"memory", "cc");
 }
 
+//实际关中断
 static __always_inline void native_irq_disable(void)
 {
 	asm volatile("cli": : :"memory");
 }
 
+//实际开启中断
 static __always_inline void native_irq_enable(void)
 {
 	asm volatile("sti": : :"memory");
@@ -74,21 +78,25 @@ static inline __cpuidle void native_halt(void)
 #ifndef __ASSEMBLY__
 #include <linux/types.h>
 
+//arch层保存eflags寄存器
 static __always_inline unsigned long arch_local_save_flags(void)
 {
 	return native_save_fl();
 }
 
+//arch层恢复eflags寄存器
 static __always_inline void arch_local_irq_restore(unsigned long flags)
 {
 	native_restore_fl(flags);
 }
 
+//arch层关中断
 static __always_inline void arch_local_irq_disable(void)
 {
 	native_irq_disable();
 }
 
+//arch层开启中断
 static __always_inline void arch_local_irq_enable(void)
 {
 	native_irq_enable();
@@ -115,6 +123,7 @@ static inline __cpuidle void halt(void)
 /*
  * For spinlocks, etc:
  */
+//实际保存eflags寄存器并关中断
 static __always_inline unsigned long arch_local_irq_save(void)
 {
 	unsigned long flags = arch_local_save_flags();

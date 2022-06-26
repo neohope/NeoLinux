@@ -39,6 +39,8 @@
 /*
  * Use __READ_ONCE() instead of READ_ONCE() if you do not require any
  * atomicity. Note that this may result in tears!
+ * 
+ * volatile告知编译器不要进行优化
  */
 #ifndef __READ_ONCE
 #define __READ_ONCE(x)	(*(const volatile __unqual_scalar_typeof(x) *)&(x))

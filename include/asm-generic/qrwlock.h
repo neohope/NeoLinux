@@ -65,6 +65,8 @@ static inline int queued_write_trylock(struct qrwlock *lock)
 	return likely(atomic_try_cmpxchg_acquire(&lock->cnts, &cnts,
 				_QW_LOCKED));
 }
+
+//获取读锁
 /**
  * queued_read_lock - acquire read lock of a queue rwlock
  * @lock: Pointer to queue rwlock structure
@@ -81,6 +83,7 @@ static inline void queued_read_lock(struct qrwlock *lock)
 	queued_read_lock_slowpath(lock);
 }
 
+//获取写锁
 /**
  * queued_write_lock - acquire write lock of a queue rwlock
  * @lock : Pointer to queue rwlock structure
@@ -95,6 +98,7 @@ static inline void queued_write_lock(struct qrwlock *lock)
 	queued_write_lock_slowpath(lock);
 }
 
+//释放读锁
 /**
  * queued_read_unlock - release read lock of a queue rwlock
  * @lock : Pointer to queue rwlock structure
@@ -107,6 +111,7 @@ static inline void queued_read_unlock(struct qrwlock *lock)
 	(void)atomic_sub_return_release(_QR_BIAS, &lock->cnts);
 }
 
+//释放写锁
 /**
  * queued_write_unlock - release write lock of a queue rwlock
  * @lock : Pointer to queue rwlock structure

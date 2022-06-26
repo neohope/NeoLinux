@@ -14,7 +14,9 @@
 
 #ifdef CONFIG_DEBUG_SPINLOCK
 
+//最底层的自旋锁数据结构
 typedef struct {
+	//真正的锁值变量，用volatile标识
 	volatile unsigned int slock;
 } arch_spinlock_t;
 

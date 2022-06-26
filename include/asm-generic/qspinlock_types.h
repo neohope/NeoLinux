@@ -11,8 +11,10 @@
 
 #include <linux/types.h>
 
+//最底层的自旋锁数据结构
 typedef struct qspinlock {
 	union {
+		//真正的锁值变量
 		atomic_t val;
 
 		/*
@@ -22,11 +24,15 @@ typedef struct qspinlock {
 		 */
 #ifdef __LITTLE_ENDIAN
 		struct {
+			//是否为加锁状态
 			u8	locked;
+			//是否为pending状态
 			u8	pending;
 		};
 		struct {
+			//待获取锁的队列
 			u16	locked_pending;
+			//队列尾
 			u16	tail;
 		};
 #else

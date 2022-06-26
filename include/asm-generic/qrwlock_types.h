@@ -10,6 +10,7 @@
  * The queue read/write lock data structure
  */
 
+//读写锁的底层数据结构
 typedef struct qrwlock {
 	union {
 		atomic_t cnts;

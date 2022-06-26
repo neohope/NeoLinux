@@ -9,6 +9,8 @@
 #include <asm/rmwcc.h>
 #include <asm/barrier.h>
 
+//原子变量操作
+
 /*
  * Atomic operations that C can't guarantee us.  Useful for
  * resource counting etc..

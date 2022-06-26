@@ -39,6 +39,7 @@ static noinline int __down_killable(struct semaphore *sem);
 static noinline int __down_timeout(struct semaphore *sem, long timeout);
 static noinline void __up(struct semaphore *sem);
 
+//获取信号量
 /**
  * down - acquire the semaphore
  * @sem: the semaphore to be acquired
@@ -53,12 +54,12 @@ static noinline void __up(struct semaphore *sem);
 void down(struct semaphore *sem)
 {
 	unsigned long flags;
-
+    //对信号量本身加锁并关中断，也许另一段代码也在操作该信号量
 	raw_spin_lock_irqsave(&sem->lock, flags);
 	if (likely(sem->count > 0))
-		sem->count--;
+		sem->count--;           //如果信号量值大于0,则对其减1
 	else
-		__down(sem);
+		__down(sem);            //否则让当前进程进入睡眠
 	raw_spin_unlock_irqrestore(&sem->lock, flags);
 }
 EXPORT_SYMBOL(down);
@@ -168,6 +169,7 @@ int down_timeout(struct semaphore *sem, long timeout)
 }
 EXPORT_SYMBOL(down_timeout);
 
+//释放信号量
 /**
  * up - release the semaphore
  * @sem: the semaphore to release
@@ -179,11 +181,12 @@ void up(struct semaphore *sem)
 {
 	unsigned long flags;
 
+    //对信号量本身加锁并关中断，必须另一段代码也在操作该信号量
 	raw_spin_lock_irqsave(&sem->lock, flags);
 	if (likely(list_empty(&sem->wait_list)))
-		sem->count++;
+		sem->count++;             //如果信号量等待链表中为空，则对信号量值加1
 	else
-		__up(sem);
+		__up(sem);                //否则执行唤醒进程相关的操作
 	raw_spin_unlock_irqrestore(&sem->lock, flags);
 }
 EXPORT_SYMBOL(up);
@@ -206,7 +209,9 @@ static inline int __sched __down_common(struct semaphore *sem, long state,
 {
 	struct semaphore_waiter waiter;
 
+    //把waiter加入sem->wait_list的头部
 	list_add_tail(&waiter.list, &sem->wait_list);
+	//current表示当前进程，即调用该函数的进程
 	waiter.task = current;
 	waiter.up = false;
 
@@ -215,9 +220,14 @@ static inline int __sched __down_common(struct semaphore *sem, long state,
 			goto interrupted;
 		if (unlikely(timeout <= 0))
 			goto timed_out;
+		//设置当前进程的状态，进程睡眠，即先前__down函数中传入的TASK_UNINTERRUPTIBLE
+		//该状态是等待资源有效时唤醒（比如等待键盘输入、socket连接、信号（signal）等等），但不可以被中断唤醒
 		__set_current_state(state);
+		//释放在down函数中加的锁
 		raw_spin_unlock_irq(&sem->lock);
+		//真正进入睡眠
 		timeout = schedule_timeout(timeout);
+		//进程下次运行会回到这里，所以要加锁
 		raw_spin_lock_irq(&sem->lock);
 		if (waiter.up)
 			return 0;
@@ -232,6 +242,7 @@ static inline int __sched __down_common(struct semaphore *sem, long state,
 	return -EINTR;
 }
 
+//进入睡眠等待
 static noinline void __sched __down(struct semaphore *sem)
 {
 	__down_common(sem, TASK_UNINTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
@@ -252,11 +263,14 @@ static noinline int __sched __down_timeout(struct semaphore *sem, long timeout)
 	return __down_common(sem, TASK_UNINTERRUPTIBLE, timeout);
 }
 
+//实际唤醒进程
 static noinline void __sched __up(struct semaphore *sem)
 {
 	struct semaphore_waiter *waiter = list_first_entry(&sem->wait_list,
 						struct semaphore_waiter, list);
+	//获取信号量等待链表中的第一个数据结构semaphore_waiter，它里面保存着睡眠进程的指针
 	list_del(&waiter->list);
 	waiter->up = true;
+	//唤醒进程重新加入调度队列
 	wake_up_process(waiter->task);
 }

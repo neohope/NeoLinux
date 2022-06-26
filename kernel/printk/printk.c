@@ -2302,6 +2302,7 @@ static int console_cpu_notify(unsigned int cpu)
 	return 0;
 }
 
+//加锁console
 /**
  * console_lock - lock the console system for exclusive use.
  *
@@ -2314,6 +2315,7 @@ void console_lock(void)
 {
 	might_sleep();
 
+    //获取信号量console_sem
 	down_console_sem();
 	if (console_suspended)
 		return;
@@ -2378,6 +2380,7 @@ static inline int can_use_console(void)
 	return cpu_online(raw_smp_processor_id()) || have_callable_console();
 }
 
+//解锁console
 /**
  * console_unlock - unlock the console system
  *
@@ -2516,6 +2519,7 @@ skip:
 
 	raw_spin_unlock(&logbuf_lock);
 
+    //释放信号量console_sem
 	up_console_sem();
 
 	/*

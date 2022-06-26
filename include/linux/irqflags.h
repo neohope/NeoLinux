@@ -152,13 +152,17 @@ do {						\
 /*
  * Wrap the arch provided IRQ routines to provide appropriate checks.
  */
+//raw层关闭中断宏
 #define raw_local_irq_disable()		arch_local_irq_disable()
+//raw层开启中断宏
 #define raw_local_irq_enable()		arch_local_irq_enable()
+//raw层保存eflags寄存器宏
 #define raw_local_irq_save(flags)			\
 	do {						\
 		typecheck(unsigned long, flags);	\
 		flags = arch_local_irq_save();		\
 	} while (0)
+//raw层恢复eflags寄存器宏
 #define raw_local_irq_restore(flags)			\
 	do {						\
 		typecheck(unsigned long, flags);	\
@@ -183,6 +187,7 @@ do {						\
  */
 #ifdef CONFIG_TRACE_IRQFLAGS
 
+//通用层接口宏
 #define local_irq_enable()				\
 	do {						\
 		trace_hardirqs_on();			\

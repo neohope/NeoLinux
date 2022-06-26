@@ -11,10 +11,14 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 
+//信号量
 /* Please don't access any members of this structure directly */
 struct semaphore {
+	//自旋锁
 	raw_spinlock_t		lock;
+	//信号数量
 	unsigned int		count;
+	//挂载睡眠等待进程的链表
 	struct list_head	wait_list;
 };
 
