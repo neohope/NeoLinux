@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Generic parallel printer driver
+ * 打印机驱动
  *
  * Copyright (C) 1992 by Jim Weigand and Linus Torvalds
  * Copyright (C) 1992,1993 by Michael K. Johnson
@@ -782,6 +783,7 @@ static long lp_compat_ioctl(struct file *file, unsigned int cmd,
 }
 #endif
 
+// 设备操作
 static const struct file_operations lp_fops = {
 	.owner		= THIS_MODULE,
 	.write		= lp_write,
